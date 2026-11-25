@@ -1,0 +1,89 @@
+<div id="app">
+  <canvas id="gl" aria-label="Game view"></canvas>
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div id="freeze-tint" aria-hidden="true"></div>
+
+  <div id="hud" hidden>
+    <div id="vignette" aria-hidden="true"></div>
+    <div class="h-top">
+      <div class="h-score you"><span class="lbl" id="h-me-lbl">You</span><b id="h-me">0</b></div>
+      <div id="h-timer" class="h-timer">1:00</div>
+      <div class="h-score"><b id="h-top">0</b><span class="lbl" id="h-top-lbl">Top bot</span></div>
+    </div>
+    <div id="h-sus" class="h-sus">
+      <span class="lbl">Lobby mood</span>
+      <div class="h-sus-bar"><i id="h-sus-fill"></i></div>
+      <span id="h-sus-label" class="h-sus-label">CHILL</span>
+    </div>
+    <div id="h-afk" class="h-afk" hidden>AFK FARM ACTIVE · press F to take over</div>
+    <div class="h-left">
+      <div id="h-earn" class="h-earn">+0 CR</div>
+      <div id="h-salt" class="h-salt">+0 salt</div>
+      <div id="h-wm" class="h-wm"></div>
+    </div>
+    <div id="h-feed" class="h-feed" aria-live="polite"></div>
+    <div class="h-chat">
+      <div id="h-saltpop" class="h-saltpop"></div>
+      <div id="h-chatlog" class="h-chatlog" aria-live="polite"></div>
+      <div id="h-chatin" class="h-chatin" hidden></div>
+    </div>
+    <div class="h-hp-box">
+      <span class="lbl">HP</span><b id="h-hp">100</b>
+      <div class="h-hp-bar"><i id="h-hp-fill"></i></div>
+    </div>
+    <div id="h-abil" class="h-abil"></div>
+    <div class="h-ammo-box">
+      <div id="h-reload" class="h-reload" hidden>Reloading</div>
+      <div class="h-ammo"><b id="h-ammo">8</b><span id="h-mag">/ 8</span></div>
+      <div id="h-wname" class="h-wname">Peashooter</div>
+    </div>
+    <div id="h-call" class="call"></div>
+    <div id="h-dead" class="h-dead" hidden></div>
+    <div id="h-board" class="h-board" hidden></div>
+    <div id="h-fps" class="h-fps"></div>
+    <div id="h-overlay" class="h-overlay" hidden></div>
+  </div>
+
+  <div id="touch" class="touch" hidden>
+    <div id="t-stick" class="t-stick"><i></i></div>
+    <div id="t-look" class="t-look"></div>
+    <button id="t-fire" class="t-btn t-fire" type="button">Fire</button>
+    <button id="t-jump" class="t-btn t-jump" type="button">Jump</button>
+    <button id="t-reload" class="t-btn t-reload" type="button">R</button>
+    <button id="t-pause" class="t-btn t-pause" type="button" aria-label="Pause">II</button>
+  </div>
+
+  <div id="summary" class="summary" hidden></div>
+
+  <div id="hub" class="hub" data-tab="play">
+    <header class="hub-top">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="m8 12 3 3 5-6"/></svg>
+        <div class="brand-txt"><span class="brand-name">TOTALLY <em>LEGIT</em></span><span class="brand-tag">verified clean gameplay*</span></div>
+      </div>
+      <nav id="hub-nav" class="hub-nav" role="tablist" aria-label="Hub sections">
+        <button type="button" role="tab" data-tab="play">Play</button>
+        <button type="button" role="tab" data-tab="bandit" class="nav-bandit">Bandit's<span id="badge-bandit" class="badge" hidden></span></button>
+        <button type="button" role="tab" data-tab="arsenal">Arsenal</button>
+        <button type="button" role="tab" data-tab="locker">Locker</button>
+        <button type="button" role="tab" data-tab="stats">Stats</button>
+      </nav>
+      <div class="wallet">
+        <div class="chip cr" title="Credits: earned from kills, spent on cheats, guns and lobbies"><i>CR</i><b id="w-cr">0</b></div>
+        <div class="chip salt" title="Salt: dropped by angry chat, spent on cosmetics"><i>SALT</i><b id="w-salt">0</b></div>
+        <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </div>
+    </header>
+    <main id="hub-main" class="hub-main"></main>
+    <footer class="hub-foot">*Not verified. Made-up game, made-up servers, made-up robots. Only cheat against bots.</footer>
+  </div>
+
+  <div id="modal" class="modal" hidden></div>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="nogl" class="nogl" hidden>
+    <h2>This browser can't run the 3D view</h2>
+    <p>Totally Legit needs WebGL 2. Try a current version of Chrome, Edge, Firefox or Safari, and make sure hardware acceleration is switched on.</p>
+  </div>
+</div>
