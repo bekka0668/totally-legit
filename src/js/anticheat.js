@@ -14,12 +14,12 @@ const AC = {
   get det() { return Save.data.det || 0; },
   set det(v) { Save.data.det = U.clamp(v, 0, 100); },
   tierOf(d) { let t = 0; for (let i = 0; i < DET_TIERS.length; i++) if (d >= DET_TIERS[i].at) t = i; return t; },
-  tier() { return DET_TIERS[this.tierOf(this.det)]; },
+  tier() { return Shop.S && Shop.S.owner ? { name: 'SERVER OWNER', color: '#c084fc' } : DET_TIERS[this.tierOf(this.det)]; },
   interval() { return Shop.S.kernel ? 40 : 20; },
   scanGain() { return Shop.S.risk * 0.15 * Shop.S.scanMul; },
   threshold() {
     const tier = Math.max(0, MAPS.indexOf(Match.def));
-    return Math.round((18 + tier * 6) * (Shop.S.shredder ? 2 : 1));
+    return Math.round((18 + tier * 6) * (Shop.S.shredder ? 2 : 1) * Shop.S.reportMul);
   },
 
   /* ---------------- match hooks ---------------- */
@@ -63,15 +63,18 @@ const AC = {
     const watched = this.admin && !Shop.S.streamProof ? 2 : 1;
     n *= watched;
     if (this.admin) this.admin.gain += n;
+    // Server Owner: detection still shows, but it can't reach a ban
+    if (Shop.S.owner) { this.det = Math.min(99, this.det + n); return; }
     this.det = this.det + n;
     if (this.det >= 100) this.ban();
   },
   // obvious plays: Humanizer softens them
-  addActive(n) { this.add(n * (Shop.S.humanizer ? 0.5 : 1)); },
+  addActive(n) { this.add(n * (Shop.S.humanizer ? 0.5 : 1) * (Shop.S.ring ? 0.5 : 1) * Shop.S.activeMul); },
   onKill(ctx) {
-    const w = (ctx.wall ? 3 : 0) + (ctx.snap ? 2 : 0) + (ctx.spin ? 4 : 0) + (ctx.silent ? 2 : 0) + (ctx.magic ? 2 : 0)
+    const S = Shop.S;
+    const w = (ctx.wall ? 3 * S.wallDet : 0) + (ctx.snap ? 2 * S.snapDet : 0) + (ctx.spin ? 4 : 0) + (ctx.silent ? 2 : 0) + (ctx.magic ? 2 : 0)
       + (ctx.blink ? 2 : 0) + (ctx.speed ? 1 : 0) + (ctx.frozen ? 1 : 0) + (ctx.multi >= 3 ? 1 : 0);
-    if (w) this.addActive(w * 0.03);
+    if (w) this.addActive(w * 0.03 * (ctx.suppressed ? 0.7 : 1));
   },
   onAbility(kind) {
     const amt = { freeze: 4, blink: 1.5, orbital: 5, kick: 3, airstrike: 3, nuke: 15, slowmo: 3 }[kind] || 1;
@@ -98,6 +101,20 @@ const AC = {
     const M = Match, S = Shop.S, s = Save.data.stats;
     const name = U.pick(ADMIN_NAMES);
     this.visits++;
+    if (S.payroll) {
+      const pay = M.def.cr * 10 * S.cr;
+      M.earn.payroll = (M.earn.payroll || 0) + pay; M.earn.total += pay; Save.data.credits += pay;
+      HUD.callout(`ADMIN PAYROLL +${U.fmt(pay)} CR`, 'small');
+    }
+    if (S.owner) {
+      this.reportsAt = Chat.reports + this.threshold() * 3;
+      Chat.server(`${name} joined to review ${U.fmt(Chat.reports)} reports.`);
+      this.admin = { name, t: 0, gain: 0, talkT: 99 };
+      this.adminSay(U.pick(['oh. it is the owner. carry on', 'sorry boss, wrong server', 'nothing to see here everyone', 'closing all tickets. have a good one boss']));
+      this.admin = null;
+      Extras.react(CHAT.adminClean, 0.6);
+      return;
+    }
     // each visit makes the next one take more reports: admins get tired of this lobby
     this.reportsAt = Chat.reports + this.threshold() * (1 + this.visits);
     if (S.bribe && M.earn.total > 0) {
@@ -112,7 +129,7 @@ const AC = {
       HUD.callout(`ADMIN BRIBED -${U.fmt(fee)} CR`, 'small');
       return;
     }
-    this.admin = { name, t: 22, gain: 0, talkT: U.rand(5, 8) };
+    this.admin = { name, t: 22 * S.adminTime, gain: 0, talkT: U.rand(5, 8) };
     Chat.server(`${name} is now spectating ${Save.data.settings.name}.`);
     this.adminSay(U.pick(ADMIN_LINES.join));
     Extras.react(CHAT.adminCheer, 0.8);
@@ -135,7 +152,7 @@ const AC = {
   kick() {
     const M = Match, s = Save.data.stats;
     this.kicked = true;
-    const lost = Math.max(0, M.earn.total * 0.5);
+    const lost = Math.max(0, M.earn.total * Shop.S.kickPenalty);
     M.earn.forfeit += lost; M.earn.total -= lost; Save.data.credits -= lost;
     s.adminKicks = (s.adminKicks || 0) + 1;
     Chat.server(`${Save.data.settings.name} was kicked by ${this.admin ? this.admin.name : 'an admin'}.`);
@@ -157,7 +174,7 @@ const AC = {
     this.banned = true;
     const lost = Math.max(0, M.earn.total);
     M.earn.forfeit += lost; M.earn.total = 0; Save.data.credits -= lost;
-    const fine = S.hwid ? 0 : Math.max(0, Save.data.credits * 0.1);
+    const fine = S.hwid ? 0 : Math.max(0, Save.data.credits * 0.1 * S.fineMul);
     M.earn.fine = fine; Save.data.credits -= fine;
     this.det = S.alt ? 0 : 40;
     s.bans = (s.bans || 0) + 1;
@@ -169,18 +186,48 @@ const AC = {
     M.finish(false);
   },
 
+  /* ---------------- ban waves ---------------- */
+  waveChance() { return !Shop.S.owner && this.tierOf(this.det) >= 2 ? Math.min(0.5, (Save.data.wave || 0) / 400) : 0; },
+  // rolled between matches: BotGuard bans in batches, sometimes long after the fact
+  rollWave() {
+    const S = Shop.compute(), D = Save.data, s = D.stats;
+    const n = U.randi(800, 9999);
+    if (S.owner) return null;
+    if (!U.chance(this.waveChance())) {
+      if (this.tierOf(this.det) >= 2 && U.chance(0.3)) return { near: true, n, banned: U.randi(300, 4000) };
+      return null;
+    }
+    D.wave = 0;
+    if (S.appeal) { this.det = 60; Save.save(); return { appealed: true, n }; }
+    const fine = S.hwid ? 0 : Math.max(0, D.credits * 0.05 * S.fineMul);
+    D.credits -= fine;
+    this.det = S.alt ? 0 : 40;
+    s.bans = (s.bans || 0) + 1; s.waves = (s.waves || 0) + 1;
+    Save.save();
+    return { hit: true, n, fine };
+  },
+
+  // a wave rolled while auto-queueing shows up in the next match's chat instead of a popup
+  announceWave(w) {
+    if (w.hit) { Chat.server(`BotGuard ban wave #${w.n}: you were in it. −${U.fmt(w.fine)} CR, detection reset.`); HUD.callout('BAN WAVE', 'multi'); }
+    else if (w.appealed) Chat.server(`BotGuard ban wave #${w.n}: Appeal Bot got you out of it.`);
+    else if (w.near) Chat.server(`BotGuard ban wave #${w.n} banned ${U.fmt(w.banned)} accounts. You were not one of them. Yet.`);
+  },
+
   /* ---------------- after the match ---------------- */
   onMatchEnd(win) {
     const S = Shop.S, s = Save.data.stats;
     s.scans = (s.scans || 0) + 1;
+    // ban waves: detection you picked up and kept builds "taint" (Save.data.wave) that can get you banned later
     if (!this.banned) {
       // laying low (a match with nothing loaded) cools detection a lot faster
-      const cool = (this.maxRisk === 0 ? 25 : 15) * (S.coolMul || 1);
+      const cool = ((this.maxRisk === 0 ? 25 : 15) + S.coolAdd) * (S.coolMul || 1);
       this.cooled = Math.min(this.det, cool);
       this.det = this.det - cool;
       if (win && this.maxRisk >= 30 && this.detStart < 25 && this.det < 25) s.ghostWins = (s.ghostWins || 0) + 1;
     }
     this.detEnd = this.det;
+    Save.data.wave = (Save.data.wave || 0) * 0.85 + (this.banned ? 0 : (Math.max(0, this.det - this.detStart) * (1 + 0.5 * this.tierOf(this.det)) + (this.det >= 50 ? 5 : 0)) * S.waveMul);
     Shop.panic = false; Shop.compute();
   },
 };

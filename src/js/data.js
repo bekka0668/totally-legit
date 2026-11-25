@@ -20,6 +20,9 @@ const WEAPONS = [
   { id: 'rifle', name: "Ol' Reliable", kind: 'Rifle', cost: 5000, dmg: 31, head: 3, rate: 0.1, mag: 26, reload: 1.9,
     spread: 0.02, auto: true, pellets: 1, recoil: 0.02, range: 200, snd: 'rifle', vm: [0.2, -0.24, -0.62],
     desc: 'Full-auto workhorse. Pairs beautifully with No Recoil.' },
+  { id: 'burst', name: 'Triple Threat', kind: 'Burst rifle', cost: 9000, dmg: 27, head: 3, rate: 0.36, mag: 30, reload: 2.0,
+    spread: 0.014, auto: false, pellets: 1, recoil: 0.016, range: 200, snd: 'rifle', burst: 3, burstGap: 0.065, vm: [0.2, -0.24, -0.62],
+    desc: 'Three rounds per click. For people who click a lot but hit a little.' },
   { id: 'sniper', name: 'LDR-50', kind: 'Sniper', cost: 15000, dmg: 115, head: 2.5, rate: 1.1, mag: 5, reload: 2.4,
     spread: 0.07, scopeSpread: 0, auto: false, pellets: 1, recoil: 0.11, range: 300, snd: 'sniper', scope: true, vm: [0.2, -0.24, -0.6],
     desc: 'Long distance relationship. Right-click to scope.' },
@@ -35,7 +38,7 @@ const WEAPONS = [
 ];
 for (const w of WEAPONS) w.cost *= 2;
 // small credit multiplier per gun: pricier guns pay a little more per kill
-const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, sniper: 1.25, lmg: 1.3, launcher: 1.35, rail: 1.5 };
+const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, burst: 1.2, sniper: 1.25, lmg: 1.3, launcher: 1.35, rail: 1.5 };
 for (const w of WEAPONS) w.pay = WEAPON_PAY[w.id] || 1;
 const WEAPON_BY_ID = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
 
@@ -177,13 +180,100 @@ const UPGRADES = [
   { id: 'gh4', mod: 'gh', x: 0, y: 2, cost: 9000, req: ['gh2'], name: 'Panic Key', desc: 'Press P to unload every cheat at once, and P again to reload. Unloaded cheats cannot be detected.' },
   { id: 'gh5', mod: 'gh', x: 2, y: 2, cost: 12000, req: ['gh3'], name: 'Stream Proof', desc: 'Spectating admins cannot see your overlays, so watching you no longer doubles detection.' },
   { id: 'gh6', mod: 'gh', x: 1, y: 3, cost: 40000, req: ['gh4', 'gh5'], name: 'Polymorphic Build', desc: 'Scans find 40% less again, and detection cools twice as fast after each match.' },
-  { id: 'gh7', mod: 'gh', x: 1, y: 4, cost: 200000, req: ['gh6'], name: 'Ring -1', desc: 'Runs below the anticheat. Scans find nothing at all. Only obvious plays can flag you.' },
+  { id: 'gh7', mod: 'gh', x: 1, y: 4, cost: 200000, req: ['gh6'], name: 'Ring -1', desc: 'Runs below the anticheat. Scans find nothing at all, and obvious plays raise detection half as much.' },
   // SPOOFER
   { id: 'sp1', mod: 'sp', x: 1, y: 0, cost: 1200, name: 'Report Shredder', desc: 'Half of all reports against you go missing. Admins show up less.' },
   { id: 'sp2', mod: 'sp', x: 0, y: 1, cost: 6000, req: ['sp1'], name: 'Admin Bribe', desc: 'When an admin joins, 10% of this match\'s credits send them back to AFK.' },
   { id: 'sp3', mod: 'sp', x: 2, y: 1, cost: 15000, req: ['sp1'], name: 'HWID Spoofer', desc: 'Bans no longer fine your wallet. You still lose that match\'s credits.' },
   { id: 'sp4', mod: 'sp', x: 2, y: 2, cost: 45000, req: ['sp3'], name: 'Alt Account', desc: 'After a ban, detection resets to 0% instead of 40%.' },
   { id: 'sp5', mod: 'sp', x: 1, y: 3, cost: 90000, req: ['sp2', 'sp4'], name: 'Appeal Bot', desc: 'Once per match, a ban is appealed automatically and detection drops to 60%.' },
+  { id: 'sp6', mod: 'sp', x: 1, y: 4, cost: 600000, req: ['sp5', 'gh7'], name: 'Server Owner', desc: 'You bought the servers. No bans, no kicks, no ban waves. Admins report to you now. Needs Ring -1 too.' },
+  // ---- second wave of upgrades: a side branch per module, plus a capstone ----
+  { id: 'aim9', mod: 'aim', x: 3, y: 0, cost: 600, req: ['aim1'], name: "Recoil Assist", desc: "Lock-on pulls 30% harder.", risk: 1, fx: {"mul": {"aimStr": 1.3}} },
+  { id: 'aim10', mod: 'aim', x: 3, y: 1, cost: 2500, req: ['aim9'], name: "Sticky Crosshair", desc: "Lock-on cone is 40% wider.", risk: 1, fx: {"mul": {"aimFov": 1.4}} },
+  { id: 'aim11', mod: 'aim', x: 3, y: 2, cost: 9000, req: ['aim10'], name: "Humanized Lock", desc: "Snaps raise BotGuard detection 50% less.", risk: 0, fx: {"mul": {"snapDet": 0.5}} },
+  { id: 'aim12', mod: 'aim', x: 3, y: 3, cost: 30000, req: ['aim11'], name: "Bone Select", desc: "Headshots deal 25% more damage.", risk: 2, fx: {"mul": {"hsMul": 1.25}} },
+  { id: 'aim13', mod: 'aim', x: 1, y: 5, cost: 350000, req: ['aim8', 'aim12'], name: "Aim God", desc: "Lock-on pulls twice as hard and headshots deal 25% more again.", risk: 3, fx: {"mul": {"aimStr": 2, "hsMul": 1.25}} },
+  { id: 'esp8', mod: 'esp', x: 3, y: 0, cost: 500, req: ['esp1'], name: "Threat Radar", desc: "You see who is aiming at you and dodge: bots aim 10% worse.", risk: 1, fx: {"mul": {"botAcc": 0.9}} },
+  { id: 'esp9', mod: 'esp', x: 3, y: 1, cost: 2000, req: ['esp8'], name: "Glow Up", desc: "Ambush kills pay 30% more.", risk: 0.5, fx: {"add": {"ambushBonus": 0.3}} },
+  { id: 'esp10', mod: 'esp', x: 3, y: 2, cost: 6000, req: ['esp9'], name: "Wall Intel", desc: "Wall kills raise BotGuard detection 40% less.", risk: 0, fx: {"mul": {"wallDet": 0.6}} },
+  { id: 'esp11', mod: 'esp', x: 3, y: 3, cost: 25000, req: ['esp10'], name: "Pre-Aim", desc: "Lock-on cone is 25% wider: you already know where they are.", risk: 1, fx: {"mul": {"aimFov": 1.25}} },
+  { id: 'esp12', mod: 'esp', x: 1, y: 5, cost: 90000, req: ['esp7', 'esp11'], name: "All-Seeing", desc: "The radar is always on and ambush kills pay 60% more.", risk: 1, fx: {"set": {"radar": true}, "add": {"ambushBonus": 0.6}} },
+  { id: 'trg7', mod: 'trg', x: 3, y: 0, cost: 800, req: ['trg1'], name: "Burst Trigger", desc: "Fire rate +10%.", risk: 1, fx: {"mul": {"fireRate": 1.1}} },
+  { id: 'trg8', mod: 'trg', x: 3, y: 1, cost: 3000, req: ['trg7'], name: "Hair Trigger", desc: "Triggerbot reacts twice as fast.", risk: 1, fx: {"mul": {"trigDelay": 0.5}} },
+  { id: 'trg9', mod: 'trg', x: 3, y: 2, cost: 10000, req: ['trg8'], name: "Mag Dump", desc: "Magazines hold 20% more.", risk: 0.5, fx: {"mul": {"mag": 1.2}} },
+  { id: 'trg10', mod: 'trg', x: 3, y: 3, cost: 30000, req: ['trg9'], name: "Trigger Discipline", desc: "Fire rate +15%.", risk: 1, fx: {"mul": {"fireRate": 1.15}} },
+  { id: 'trg11', mod: 'trg', x: 1, y: 4, cost: 120000, req: ['trg6', 'trg10'], name: "Machine Mind", desc: "Fire rate +25%, and 10% of hits are critical (double damage).", risk: 3, fx: {"mul": {"fireRate": 1.25}, "add": {"crit": 0.1}} },
+  { id: 'hb6', mod: 'hb', x: 3, y: 0, cost: 300, req: ['hb1'], name: "Puffy", desc: "Body hitboxes +15%.", risk: 0.5, fx: {"mul": {"hbBody": 1.15}} },
+  { id: 'hb7', mod: 'hb', x: 3, y: 1, cost: 1500, req: ['hb6'], name: "Big Brain", desc: "Head hitboxes +20%.", risk: 1, fx: {"mul": {"hbHeadX": 1.2}} },
+  { id: 'hb8', mod: 'hb', x: 3, y: 2, cost: 6000, req: ['hb7'], name: "Hit Registration", desc: "Headshot kills pay 25% more.", risk: 0.5, fx: {"add": {"hsBonus": 0.25}} },
+  { id: 'hb9', mod: 'hb', x: 3, y: 3, cost: 25000, req: ['hb8'], name: "Spongebob Mode", desc: "Body hitboxes +30%.", risk: 2, fx: {"mul": {"hbBody": 1.3}} },
+  { id: 'hb10', mod: 'hb', x: 1, y: 4, cost: 150000, req: ['hb5', 'hb9'], name: "Event Horizon", desc: "All hitboxes +50%. They are basically buildings now.", risk: 4, fx: {"mul": {"hbBody": 1.5, "hbHeadX": 1.5}} },
+  { id: 'st6', mod: 'st', x: 3, y: 0, cost: 300, req: ['st1'], name: "Grip Tape", desc: "Recoil \u221220%.", risk: 0.5, fx: {"mul": {"recoil": 0.8}} },
+  { id: 'st7', mod: 'st', x: 3, y: 1, cost: 1500, req: ['st6'], name: "Gyro", desc: "Spread from moving and jumping \u221230%.", risk: 1, fx: {"mul": {"airSpread": 0.7}} },
+  { id: 'st8', mod: 'st', x: 3, y: 2, cost: 5000, req: ['st7'], name: "Muscle Memory", desc: "Fire rate +10%.", risk: 1, fx: {"mul": {"fireRate": 1.1}} },
+  { id: 'st9', mod: 'st', x: 3, y: 3, cost: 15000, req: ['st8'], name: "Iron Sights", desc: "Aim down sights 60% faster.", risk: 0.5, fx: {"mul": {"adsFast": 1.6}} },
+  { id: 'st10', mod: 'st', x: 1, y: 4, cost: 80000, req: ['st5', 'st9'], name: "Statue", desc: "Moving and jumping spread \u221260% more, recoil halved.", risk: 2, fx: {"mul": {"airSpread": 0.4, "recoil": 0.5}} },
+  { id: 'mv7', mod: 'mv', x: 3, y: 0, cost: 400, req: ['mv1'], name: "Light Shoes", desc: "Move 10% faster.", risk: 0.5, fx: {"mul": {"speed": 1.1}} },
+  { id: 'mv8', mod: 'mv', x: 3, y: 1, cost: 2000, req: ['mv7'], name: "Moon Boots", desc: "Jump 30% higher.", risk: 1, fx: {"mul": {"jump": 1.3}} },
+  { id: 'mv9', mod: 'mv', x: 3, y: 2, cost: 6000, req: ['mv8'], name: "Slide Cancel", desc: "Blink recharges 40% faster.", risk: 1, fx: {"mul": {"blinkCD": 0.6}} },
+  { id: 'mv10', mod: 'mv', x: 3, y: 3, cost: 20000, req: ['mv9'], name: "Parkour", desc: "Much better air control.", risk: 1, fx: {"mul": {"airAccel": 1.6}} },
+  { id: 'mv11', mod: 'mv', x: 1, y: 4, cost: 150000, req: ['mv6', 'mv10'], name: "Sonic", desc: "Move 25% faster again and jump 20% higher.", risk: 3, fx: {"mul": {"speed": 1.25, "jump": 1.2}} },
+  { id: 'am8', mod: 'am', x: 3, y: 0, cost: 300, req: ['am1'], name: "Drum Mag", desc: "Magazines hold 25% more.", risk: 0.5, fx: {"mul": {"mag": 1.25}} },
+  { id: 'am9', mod: 'am', x: 3, y: 1, cost: 1500, req: ['am8'], name: "Quick Strip", desc: "Reload 25% faster.", risk: 0.5, fx: {"mul": {"reload": 0.75}} },
+  { id: 'am10', mod: 'am', x: 3, y: 2, cost: 6000, req: ['am9'], name: "Hollow Tips", desc: "Damage +10%.", risk: 1, fx: {"mul": {"dmgMul": 1.1}} },
+  { id: 'am11', mod: 'am', x: 3, y: 3, cost: 25000, req: ['am10'], name: "Overpressure", desc: "8% of hits are critical (double damage).", risk: 2, fx: {"add": {"crit": 0.08}} },
+  { id: 'am12', mod: 'am', x: 1, y: 4, cost: 120000, req: ['am7', 'am11'], name: "Infinite Arsenal", desc: "Damage +20% and 7% more critical hits.", risk: 3, fx: {"mul": {"dmgMul": 1.2}, "add": {"crit": 0.07}} },
+  { id: 'pa7', mod: 'pa', x: 3, y: 0, cost: 300, req: ['pa1'], name: "Bandages", desc: "Heal 5 HP for every kill.", risk: 0.5, fx: {"add": {"lifeOnKill": 5}} },
+  { id: 'pa8', mod: 'pa', x: 3, y: 1, cost: 1500, req: ['pa7'], name: "Adrenaline", desc: "Heal 10 more HP for every kill.", risk: 1, fx: {"add": {"lifeOnKill": 10}} },
+  { id: 'pa9', mod: 'pa', x: 3, y: 2, cost: 6000, req: ['pa8'], name: "Plating", desc: "Take 15% less damage.", risk: 1, fx: {"mul": {"dmgTaken": 0.85}} },
+  { id: 'pa10', mod: 'pa', x: 3, y: 3, cost: 25000, req: ['pa9'], name: "Second Wind", desc: "Respawn twice as fast.", risk: 1, fx: {"mul": {"respawn": 0.5}} },
+  { id: 'pa11', mod: 'pa', x: 1, y: 4, cost: 130000, req: ['pa6', 'pa10'], name: "Untouchable", desc: "Take 30% less damage again and heal 20 HP per kill.", risk: 3, fx: {"mul": {"dmgTaken": 0.7}, "add": {"lifeOnKill": 20}} },
+  { id: 'mn9', mod: 'mn', x: 3, y: 0, cost: 500, req: ['mn1'], name: "Penny Pincher", desc: "Credits +10%.", risk: 0.5, fx: {"mul": {"cr": 1.1}} },
+  { id: 'mn10', mod: 'mn', x: 3, y: 1, cost: 2500, req: ['mn9'], name: "Tax Evasion", desc: "Win bonuses pay 50% more.", risk: 0, fx: {"mul": {"winMul": 1.5}} },
+  { id: 'mn11', mod: 'mn', x: 3, y: 2, cost: 8000, req: ['mn10'], name: "Crypto Miner", desc: "Style points pay 50% more at the end of a match.", risk: 0, fx: {"mul": {"stylePay": 1.5}} },
+  { id: 'mn12', mod: 'mn', x: 3, y: 3, cost: 30000, req: ['mn11'], name: "Offshore Account", desc: "Credits +15%.", risk: 1, fx: {"mul": {"cr": 1.15}} },
+  { id: 'mn13', mod: 'mn', x: 1, y: 5, cost: 500000, req: ['mn8', 'mn12'], name: "Infinite Money", desc: "Credits +25% on top of everything.", risk: 2, fx: {"mul": {"cr": 1.25}} },
+  { id: 'lg8', mod: 'lg', x: 3, y: 0, cost: 500, req: ['lg1'], name: "Jitter", desc: "Bots aim 10% worse.", risk: 1, fx: {"mul": {"botAcc": 0.9}} },
+  { id: 'lg9', mod: 'lg', x: 3, y: 1, cost: 2500, req: ['lg8'], name: "Ping Spike", desc: "Bots move 10% slower.", risk: 1, fx: {"mul": {"botSpeed": 0.9}} },
+  { id: 'lg10', mod: 'lg', x: 3, y: 2, cost: 8000, req: ['lg9'], name: "Long Freeze", desc: "Freeze Frame recharges 30% faster.", risk: 1, fx: {"mul": {"freezeCD": 0.7}} },
+  { id: 'lg11', mod: 'lg', x: 3, y: 3, cost: 25000, req: ['lg10'], name: "Packet Flood", desc: "+2 bots in every lobby.", risk: 1, fx: {"add": {"extraBots": 2}} },
+  { id: 'lg12', mod: 'lg', x: 1, y: 4, cost: 150000, req: ['lg7', 'lg11'], name: "Total Desync", desc: "Bots aim 30% worse and 2 more join every lobby.", risk: 3, fx: {"mul": {"botAcc": 0.7}, "add": {"extraBots": 2}} },
+  { id: 'ks7', mod: 'ks', x: 3, y: 0, cost: 1500, req: ['ks1'], name: "Spy Plane", desc: "Recon Drone lasts 50% longer.", risk: 0.5, fx: {"mul": {"uavTime": 1.5}} },
+  { id: 'ks8', mod: 'ks', x: 3, y: 1, cost: 4000, req: ['ks7'], name: "Bigger Crates", desc: "Care packages pay double.", risk: 0.5, fx: {"mul": {"careMul": 2}} },
+  { id: 'ks9', mod: 'ks', x: 3, y: 2, cost: 12000, req: ['ks8'], name: "Laser Capacitor", desc: "Orbital Laser recharges 35% faster.", risk: 1, fx: {"mul": {"orbitalCD": 0.65}} },
+  { id: 'ks10', mod: 'ks', x: 3, y: 3, cost: 30000, req: ['ks9'], name: "Cluster Bombs", desc: "Airstrike radius +50%.", risk: 1, fx: {"mul": {"strikeR": 1.5}} },
+  { id: 'ks11', mod: 'ks', x: 1, y: 4, cost: 200000, req: ['ks6', 'ks10'], name: "Killstreak Kingpin", desc: "Care packages pay double again and the laser recharges 35% faster.", risk: 2, fx: {"mul": {"careMul": 2, "orbitalCD": 0.65}} },
+  { id: 'so7', mod: 'so', x: 3, y: 0, cost: 500, req: ['so1'], name: "Copypasta", desc: "Angry chat drops 25% more salt.", risk: 0, fx: {"mul": {"salt": 1.25}} },
+  { id: 'so8', mod: 'so', x: 3, y: 1, cost: 2500, req: ['so7'], name: "Mod Friend", desc: "Fake Admin recharges 40% faster.", risk: 0.5, fx: {"mul": {"kickCD": 0.6}} },
+  { id: 'so9', mod: 'so', x: 3, y: 2, cost: 8000, req: ['so8'], name: "Wanted Poster", desc: "Bounties pay 3\u00d7 more.", risk: 0.5, fx: {"add": {"bountyAdd": 3}} },
+  { id: 'so10', mod: 'so', x: 3, y: 3, cost: 25000, req: ['so9'], name: "Viral Clip", desc: "Clip Farming pays double.", risk: 0, fx: {"mul": {"clipMul": 2}} },
+  { id: 'so11', mod: 'so', x: 1, y: 4, cost: 150000, req: ['so6', 'so10'], name: "Influencer Deal", desc: "Angry chat drops 50% more salt again.", risk: 0, fx: {"mul": {"salt": 1.5}} },
+  { id: 'gs7', mod: 'gs', x: 3, y: 0, cost: 800, req: ['gs1'], name: "Polished Barrel", desc: "Damage +10%.", risk: 1, fx: {"mul": {"dmgMul": 1.1}} },
+  { id: 'gs8', mod: 'gs', x: 3, y: 1, cost: 3000, req: ['gs7'], name: "Lucky Rounds", desc: "5% of hits are critical (double damage).", risk: 1, fx: {"add": {"crit": 0.05}} },
+  { id: 'gs9', mod: 'gs', x: 3, y: 2, cost: 10000, req: ['gs8'], name: "Bloodsucker", desc: "Heal 3 more HP for every hit.", risk: 1, fx: {"add": {"vampAdd": 3}} },
+  { id: 'gs10', mod: 'gs', x: 3, y: 3, cost: 30000, req: ['gs9'], name: "Big Boom", desc: "Explosive Rounds hit 50% harder.", risk: 1, fx: {"mul": {"exMul": 1.5}} },
+  { id: 'gs11', mod: 'gs', x: 1, y: 4, cost: 150000, req: ['gs6', 'gs10'], name: "Chain Reaction", desc: "Chain Lightning arcs to 4 bots, and 5% more crits.", risk: 3, fx: {"set": {"chainN": 4}, "add": {"crit": 0.05}} },
+  { id: 'ch6', mod: 'ch', x: 3, y: 0, cost: 800, req: ['ch1'], name: "Speed Loader II", desc: "Reload 15% faster.", risk: 0.5, fx: {"mul": {"reload": 0.85}} },
+  { id: 'ch7', mod: 'ch', x: 3, y: 1, cost: 3000, req: ['ch6'], name: "Long Exposure", desc: "Bullet Time lasts 3 s longer.", risk: 1, fx: {"add": {"slowAdd": 3}} },
+  { id: 'ch8', mod: 'ch', x: 3, y: 2, cost: 12000, req: ['ch7'], name: "Deja Vu", desc: "Rewind works twice per match.", risk: 1, fx: {"set": {"rewinds": 2}} },
+  { id: 'ch9', mod: 'ch', x: 3, y: 3, cost: 30000, req: ['ch8'], name: "Stolen Hours", desc: "Time Thief can add up to 120 s.", risk: 1, fx: {"set": {"thiefCap": 120}} },
+  { id: 'ch10', mod: 'ch', x: 1, y: 4, cost: 150000, req: ['ch5', 'ch9'], name: "Time Lord", desc: "Bullet Time recharges twice as fast and Rewind works 3 times per match.", risk: 2, fx: {"mul": {"slowCDMul": 0.5}, "set": {"rewinds": 3}} },
+  { id: 'in6', mod: 'in', x: 3, y: 0, cost: 500, req: ['in1'], name: "Coupon Code", desc: "Credit chips are worth 50% more.", risk: 0, fx: {"mul": {"chipMul": 1.5}} },
+  { id: 'in7', mod: 'in', x: 3, y: 1, cost: 2500, req: ['in6'], name: "Day Trader", desc: "Interest can pay twice as much.", risk: 0, fx: {"mul": {"interestCap": 2}} },
+  { id: 'in8', mod: 'in', x: 3, y: 2, cost: 8000, req: ['in7'], name: "Black Friday", desc: "Contracts pay 50% more.", risk: 0, fx: {"mul": {"contractMul": 1.5}} },
+  { id: 'in9', mod: 'in', x: 3, y: 3, cost: 25000, req: ['in8'], name: "Parts Dealer", desc: "Rival cheaters drop 1 more loader part.", risk: 0, fx: {"add": {"partsAdd": 1}} },
+  { id: 'in10', mod: 'in', x: 1, y: 4, cost: 150000, req: ['in5', 'in9'], name: "Hedge Fund", desc: "Interest pays 4% of your wallet, and chips are worth 50% more again.", risk: 0, fx: {"set": {"interestRate": 0.04}, "mul": {"chipMul": 1.5}} },
+  { id: 'gh8', mod: 'gh', x: 3, y: 0, cost: 1000, req: ['gh1'], name: "Clean Install", desc: "Detection cools 5% more after every match.", risk: 0, fx: {"add": {"coolAdd": 5}} },
+  { id: 'gh9', mod: 'gh', x: 3, y: 1, cost: 4000, req: ['gh8'], name: "VPN Hop", desc: "Admins need 50% more reports before they show up.", risk: 0, fx: {"mul": {"reportMul": 1.5}} },
+  { id: 'gh10', mod: 'gh', x: 3, y: 2, cost: 12000, req: ['gh9'], name: "Spoofed Telemetry", desc: "Obvious plays raise detection 20% less.", risk: 0, fx: {"mul": {"activeMul": 0.8}} },
+  { id: 'gh11', mod: 'gh', x: 3, y: 3, cost: 40000, req: ['gh10'], name: "Ghost Protocol", desc: "Ban-wave risk builds up half as fast.", risk: 0, fx: {"mul": {"waveMul": 0.5}} },
+  { id: 'gh12', mod: 'gh', x: 1, y: 5, cost: 300000, req: ['gh7', 'gh11'], name: "Invisible", desc: "Obvious plays raise detection 40% less again, and you cool 10% more per match.", risk: 0, fx: {"mul": {"activeMul": 0.6}, "add": {"coolAdd": 10}} },
+  { id: 'sp7', mod: 'sp', x: 3, y: 0, cost: 2000, req: ['sp1'], name: "Lawyer", desc: "Admin kicks only take 25% of the match's credits.", risk: 0, fx: {"set": {"kickPenalty": 0.25}} },
+  { id: 'sp8', mod: 'sp', x: 3, y: 1, cost: 6000, req: ['sp7'], name: "Fine Print", desc: "Ban fines are halved.", risk: 0, fx: {"mul": {"fineMul": 0.5}} },
+  { id: 'sp9', mod: 'sp', x: 3, y: 2, cost: 15000, req: ['sp8'], name: "Short Attention Span", desc: "Admins only watch for 60% as long.", risk: 0, fx: {"mul": {"adminTime": 0.6}} },
+  { id: 'sp10', mod: 'sp', x: 3, y: 3, cost: 40000, req: ['sp9'], name: "Admin Payroll", desc: "Every admin who shows up pays you 10 kills of credits. They work for you.", risk: 0, fx: {"set": {"payroll": true}} },
+  { id: 'sp11', mod: 'sp', x: 1, y: 5, cost: 800000, req: ['sp6', 'sp10'], name: "Landlord", desc: "You own every lobby: credits +20%.", risk: 0, fx: {"mul": {"cr": 1.2}} },
 ];
 // balance pass: cheats cost 2.5x what they used to, so the early game takes a few matches per cheat
 for (const u of UPGRADES) u.cost = Math.round(u.cost * 2.5 / 10) * 10;
@@ -205,7 +295,7 @@ const UPGRADE_RISK = {
   ch1: 0.5, ch2: 2, ch3: 2, ch4: 2, ch5: 2,
   in1: 0.5, in2: 0.5, in3: 0, in4: 0, in5: 0,
 };
-for (const u of UPGRADES) u.risk = UPGRADE_RISK[u.id] || 0;
+for (const u of UPGRADES) u.risk = u.risk != null ? u.risk : UPGRADE_RISK[u.id] || 0;
 const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 
 /* ---------------- cosmetics (bought with salt) ---------------- */
@@ -231,6 +321,12 @@ const SKINS = [
   { id: 'bandit', name: 'Bandit Pink', cost: 700, c0: '#ff4f9a', c1: '#2a1530', pat: 4, spec: 0.6 },
   { id: 'chrome', name: 'Mirror Chrome', cost: 1100, c0: '#e6ebf2', c1: '#7d8896', pat: 0, spec: 1.8 },
   { id: 'void', name: 'The Void', cost: 2500, c0: '#06060c', c1: '#3b1d6e', pat: 13, spec: 1.1 },
+  // Bandit Pass exclusives
+  { id: 'p_static', name: 'Static Noise', cost: 0, pass: true, c0: '#d9dde4', c1: '#2a2d33', pat: 6, spec: 0.4 },
+  { id: 'p_sunset', name: 'Rooftop Sunset', cost: 0, pass: true, c0: '#ff9b6a', c1: '#5b2a6e', pat: 0, spec: 0.8 },
+  { id: 'p_toxic', name: 'Toxic Lobby', cost: 0, pass: true, c0: '#7cff4d', c1: '#1a2b12', pat: 4, spec: 0.6 },
+  { id: 'p_galaxy', name: 'Moon Base', cost: 0, pass: true, c0: '#1b1446', c1: '#8fb3ff', pat: 13, spec: 1.2 },
+  { id: 'p_raccoon', name: 'Raccoon Stripe', cost: 0, pass: true, c0: '#8a8c97', c1: '#17151b', pat: 3, spec: 0.4 },
 ];
 const SKIN_BY_ID = Object.fromEntries(SKINS.map(s => [s.id, s]));
 
@@ -248,6 +344,9 @@ const XHAIRS = [
   { id: 'diamond', name: 'Diamond', cost: 60 },
   { id: 'brackets', name: 'Brackets', cost: 80 },
   { id: 'triangle', name: 'Triforce-ish', cost: 120 },
+  { id: 'star', name: 'Gold Star', cost: 0, pass: true },
+  { id: 'ringx', name: 'Target Locked', cost: 0, pass: true },
+  { id: 'hex', name: 'Hex Key', cost: 0, pass: true },
 ];
 const XHAIR_COLORS = ['#7cffb2', '#4df0ff', '#ffffff', '#ffe24d', '#ff5ccf', '#ff4d4d', '#9d7bff', '#ff9a3c'];
 
@@ -259,6 +358,8 @@ const KILLFX = [
   { id: 'fireworks', name: 'Fireworks', cost: 420, desc: 'Sparks fly straight up. Very subtle.' },
   { id: 'saltfx', name: 'Salt Shaker', cost: 300, desc: 'Bots crumble into a pile of salt. Fitting.' },
   { id: 'banned', name: 'BANNED', cost: 650, desc: 'A big red BANNED stamp over every kill. The irony is free.' },
+  { id: 'glitchfx', name: 'Desync', cost: 0, pass: true, desc: 'Bots smear sideways into cyan and magenta cubes. Bandit Pass only.' },
+  { id: 'smoke', name: 'Logged Off', cost: 0, pass: true, desc: 'Bots puff into a slow grey cloud. Bandit Pass only.' },
 ];
 
 /* ---------------- maps ---------------- */
@@ -304,6 +405,40 @@ function genMega() {
   const spawns = [[1, 1], [30, 1], [1, 30], [30, 30], [15, 1], [16, 30], [1, 16], [30, 15], [8, 8], [23, 8], [8, 23], [23, 23], [15, 15], [16, 16], [1, 8], [30, 23], [8, 1], [23, 30]];
   spawns.forEach(([q, r]) => { g[r][q] = 'S'; });
   g[28][16] = 'P';
+  return g.map(r => r.join(''));
+}
+
+function genRuins() {
+  const W = 28, H = 20, g = [], rnd = U.rng(7331);
+  for (let r = 0; r < H; r++) g.push(Array.from({ length: W }, (_, q) => (r === 0 || q === 0 || r === H - 1 || q === W - 1) ? '#' : '.'));
+  const put = (q, r, ch) => { if (q > 1 && r > 1 && q < W - 2 && r < H - 2 && g[r][q] === '.') g[r][q] = ch; };
+  // broken wall stubs, never longer than 3 so the ruins stay open
+  for (let i = 0; i < 26; i++) {
+    const q = 2 + Math.floor(rnd() * (W - 4)), r = 2 + Math.floor(rnd() * (H - 4)), hz = rnd() < 0.5, len = 1 + Math.floor(rnd() * 3);
+    const ch = rnd() < 0.55 ? '#' : 'h';
+    for (let k = 0; k < len; k++) put(hz ? q + k : q, hz ? r : r + k, ch);
+  }
+  for (let i = 0; i < 12; i++) put(2 + Math.floor(rnd() * (W - 4)), 2 + Math.floor(rnd() * (H - 4)), rnd() < 0.5 ? 'p' : 'c');
+  for (let q = 1; q < W - 1; q++) g[10][q] = '.';
+  for (let r = 1; r < H - 1; r++) g[r][14] = '.';
+  [[1, 1], [26, 1], [1, 18], [26, 18], [7, 5], [20, 5], [7, 14], [20, 14], [14, 2], [14, 17]].forEach(([q, r]) => { g[r][q] = 'S'; });
+  g[10][14] = 'P';
+  return g.map(r => r.join(''));
+}
+
+function genVolcano() {
+  const N = 30, c = (N - 1) / 2, g = [], rnd = U.rng(666);
+  for (let r = 0; r < N; r++) { const row = []; for (let q = 0; q < N; q++) row.push(Math.hypot(q - c, r - c) > 14 ? '#' : '.'); g.push(row); }
+  const put = (q, r, ch) => { if (g[r] && g[r][q] === '.') g[r][q] = ch; };
+  // lab blocks in a ring, rock clusters scattered
+  for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; const q = Math.round(c + Math.cos(a) * 8), r = Math.round(c + Math.sin(a) * 8); put(q, r, 'K'); put(q + 1, r, 'K'); }
+  for (let i = 0; i < 30; i++) { const q = 3 + Math.floor(rnd() * 24), r = 3 + Math.floor(rnd() * 24); put(q, r, rnd() < 0.6 ? 'C' : 'p'); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + 0.3; put(Math.round(c + Math.cos(a) * 4), Math.round(c + Math.sin(a) * 4), 'h'); }
+  for (let r = 1; r < N - 1; r++) { if (g[r][15] !== '#') g[r][15] = '.'; }
+  for (let q = 1; q < N - 1; q++) { if (g[15][q] !== '#') g[15][q] = '.'; }
+  const spawns = [[15, 2], [15, 27], [2, 15], [27, 15], [7, 7], [22, 7], [7, 22], [22, 22], [11, 11], [18, 18], [11, 18], [18, 11]];
+  spawns.forEach(([q, r]) => { if (g[r][q] !== '#') g[r][q] = 'S'; });
+  g[15][15] = 'P';
   return g.map(r => r.join(''));
 }
 
@@ -376,6 +511,29 @@ const MAPS = [
     props: 'yard',
   },
   {
+    id: 'garage', name: 'Parking Garage', mode: 'FFA', blurb: 'Concrete pillars, oil stains, four bots and terrible echo.',
+    bots: 4, cr: 28, time: 80, unlock: 350, wallH: 3.4,
+    bot: { dmg: 9, acc: 0.22, react: 0.75, fire: 0.52, speed: 3.9 },
+    col: { floor: '#5d6068', wall: '#8a8f98', crate: '#7a5c3e', half: '#c9b43a', pillar: '#a3a8b0', hedge: '#4d8b46', accent: '#ffd23f' },
+    pat: { floor: 14, wall: 14 },
+    env: { zenith: '#2a3140', horizon: '#6c7385', sun: [0.2, -0.95, 0.2], sunCol: '#fff4d6', sky: '#4a5262', gnd: '#3c3e44', fog: '#3a3f4b', fogDen: 0.02, stars: 0, clouds: 0 },
+    layout: [
+      '##################',
+      '#P...p....p....S.#',
+      '#.cc.........cc..#',
+      '#....p....p......#',
+      '#hhhh....hhhh..h.#',
+      '#....p....p......#',
+      '#.C............C.#',
+      '#....p....p......#',
+      '#..hhhh....hhhh..#',
+      '#S...p....p.....S#',
+      '#........c.......#',
+      '##################',
+    ],
+    props: 'garage', chat: ['who parked here', 'my car alarm keeps going off', 'level 2 is free parking right', 'it echoes so much in here'],
+  },
+  {
     id: 'court', name: 'Courtyard', mode: 'FFA', blurb: 'Hedges, pillars and a fountain nobody asked for.',
     bots: 5, cr: 35, time: 90, unlock: 700, wallH: 4.8,
     bot: { dmg: 9, acc: 0.24, react: 0.7, fire: 0.5, speed: 4.0 },
@@ -399,6 +557,31 @@ const MAPS = [
       '##################',
     ],
     props: 'court',
+  },
+  {
+    id: 'snow', name: 'Snowed In', mode: 'FFA', blurb: 'An arctic outpost buried in drifts. Seven bots, cold hands.',
+    bots: 7, cr: 50, time: 90, unlock: 1900, wallH: 4.6,
+    bot: { dmg: 9, acc: 0.26, react: 0.68, fire: 0.48, speed: 3.9 },
+    col: { floor: '#e6edf3', wall: '#9fb2c4', crate: '#7c5a3a', half: '#c7d3de', pillar: '#d9e2ea', hedge: '#f2f6fa', accent: '#3db8ff' },
+    pat: { floor: 14, wall: 9 },
+    env: { zenith: '#7fa6cf', horizon: '#eef4fa', sun: [-0.3, -0.6, -0.7], sunCol: '#ffffff', sky: '#c9d9ea', gnd: '#c9d3dc', fog: '#e8eef4', fogDen: 0.022, stars: 0, clouds: 0.8 },
+    layout: [
+      '####################',
+      '#S.....g.....K....S#',
+      '#..gg..g..c..K..c..#',
+      '#..................#',
+      '#.c...KKK....gg....#',
+      '#.....KKK..........#',
+      '#..g.......C..p....#',
+      '#..g..p.........g..#',
+      '#........gg.....g..#',
+      '#.KK..c......KKK...#',
+      '#.KK.........KKK.c.#',
+      '#..c....g..........#',
+      '#S.......P........S#',
+      '####################',
+    ],
+    props: 'snow', chat: ['my fingers are frozen', 'cant see anything in this snow', 'who built a snowman over there', 'brr'],
   },
   {
     id: 'warehouse', name: 'Warehouse 9', mode: 'FFA', blurb: 'Shelving, containers, flickering lights. Eight bots.',
@@ -426,6 +609,31 @@ const MAPS = [
       '######################',
     ],
     props: 'warehouse',
+  },
+  {
+    id: 'arcade', name: 'Neon Arcade', mode: 'FFA', blurb: 'Cabinets, carpet and a prize counter. Nine bots, insert coin.',
+    bots: 9, cr: 70, time: 95, unlock: 5500, wallH: 4.2,
+    bot: { dmg: 10, acc: 0.29, react: 0.6, fire: 0.45, speed: 4.2 },
+    col: { floor: '#1b1238', wall: '#2a1a50', crate: '#ff3df0', half: '#3a2470', pillar: '#4b2d8c', hedge: '#4d8b46', accent: '#3dffe0' },
+    pat: { floor: 12, wall: 16 },
+    env: { zenith: '#0a0520', horizon: '#3b1366', sun: [0.2, -0.9, 0.3], sunCol: '#e0c8ff', sky: '#2d1a55', gnd: '#150c2e', fog: '#1e0f3a', fogDen: 0.016, stars: 0.6, clouds: 0 },
+    layout: [
+      '######################',
+      '#S..p.p.p....p.p.p..S#',
+      '#....................#',
+      '#.hh....C....C....hh.#',
+      '#....p.p......p.p....#',
+      '#.c..................#',
+      '#....hhh..ff..hhh..c.#',
+      '#....hhh..ff..hhh....#',
+      '#.c..................#',
+      '#....p.p......p.p....#',
+      '#.hh....C....C....hh.#',
+      '#....................#',
+      '#S..p.p.p.P..p.p.p..S#',
+      '######################',
+    ],
+    props: 'arcade', chat: ['high score is mine', 'who unplugged the dance machine', 'i have 400 tickets', 'insert coin to continue'],
   },
   {
     id: 'servers', name: 'Server Farm', mode: 'FFA', blurb: 'Rows of humming racks. The admin left the door open. Ten bots.',
@@ -484,6 +692,16 @@ const MAPS = [
     props: 'roofs',
   },
   {
+    id: 'desert', name: 'Desert Ruins', mode: 'FFA', blurb: 'Broken walls, burning sand, fourteen bots and no shade.',
+    bots: 14, cr: 130, time: 110, unlock: 30000, wallH: 3.6,
+    bot: { dmg: 11, acc: 0.32, react: 0.53, fire: 0.41, speed: 4.4 },
+    col: { floor: '#d9b77a', wall: '#c09a62', crate: '#8a6236', half: '#b8925c', pillar: '#e2c896', hedge: '#6b8a3f', accent: '#ff7a2e' },
+    pat: { floor: 14, wall: 10 },
+    env: { zenith: '#3a7ad0', horizon: '#ffe2a8', sun: [0.4, -0.85, 0.3], sunCol: '#fff0c8', sky: '#d9c9a8', gnd: '#b8955c', fog: '#f2dcae', fogDen: 0.009, stars: 0, clouds: 0.15 },
+    layout: genRuins(),
+    props: 'desert', chat: ['sand in my keyboard', 'it is so hot', 'these ruins are older than the admin', 'water break?'],
+  },
+  {
     id: 'colosseum', name: 'Colosseum', mode: 'FFA', blurb: 'A night arena under the stars. Eighteen bots.',
     bots: 18, cr: 160, time: 120, unlock: 60000, wallH: 5,
     bot: { dmg: 12, acc: 0.34, react: 0.5, fire: 0.4, speed: 4.4 },
@@ -492,6 +710,16 @@ const MAPS = [
     env: { zenith: '#070c24', horizon: '#33406e', sun: [-0.3, -0.9, 0.3], sunCol: '#aab8ff', sky: '#4d5a8c', gnd: '#3e3528', fog: '#232b4d', fogDen: 0.012, stars: 1, clouds: 0.15 },
     layout: genColosseum(),
     props: 'colosseum',
+  },
+  {
+    id: 'volcano', name: 'Volcano Lab', mode: 'FFA', blurb: 'A secret lab inside a volcano. Twenty-four bots. Do not touch the glowing stuff.',
+    bots: 24, cr: 210, time: 120, unlock: 115000, wallH: 5,
+    bot: { dmg: 12, acc: 0.35, react: 0.48, fire: 0.39, speed: 4.5 },
+    col: { floor: '#3a2a26', wall: '#5a3a30', crate: '#2e3640', half: '#4a3a34', pillar: '#6a4a3a', hedge: '#4d8b46', accent: '#ff5a1f' },
+    pat: { floor: 14, wall: 10 },
+    env: { zenith: '#1a0606', horizon: '#ff5a1f', sun: [-0.2, -0.8, 0.5], sunCol: '#ffb070', sky: '#6a1e10', gnd: '#2a1410', fog: '#4a160c', fogDen: 0.014, stars: 0.2, clouds: 0.3 },
+    layout: genVolcano(),
+    props: 'volcano', chat: ['why is the floor warm', 'whose evil lab is this', 'i smell sulfur', 'is that lava or a texture'],
   },
   {
     id: 'mega', name: 'Megalobby', mode: 'FFA', blurb: 'Thirty-two bots on a neon grid. Pure chaos.',
@@ -512,6 +740,38 @@ const MAPS = [
     env: { zenith: '#000000', horizon: '#141a2e', sun: [0.5, -0.6, -0.6], sunCol: '#ffffff', sky: '#1a2038', gnd: '#55575e', fog: '#0c1020', fogDen: 0.006, stars: 1, clouds: 0 },
     layout: genMoon(),
     props: 'moon',
+  },
+  {
+    id: 'house', name: "The Admin's House", mode: 'FFA', blurb: 'You found where the admin lives. Forty-eight bots, and he is asleep upstairs.',
+    bots: 48, cr: 600, time: 140, unlock: 3000000, wallH: 4.4,
+    bot: { dmg: 15, acc: 0.4, react: 0.4, fire: 0.35, speed: 4.8 },
+    col: { floor: '#8a6a4a', wall: '#d8ccb8', crate: '#6a4a8a', half: '#a88a6a', pillar: '#c9b89a', hedge: '#4d8b46', accent: '#ff4f9a' },
+    pat: { floor: 8, wall: 10 },
+    env: { zenith: '#101830', horizon: '#3a4a70', sun: [0.3, -0.8, -0.4], sunCol: '#ffe6c8', sky: '#2a3450', gnd: '#3a2e24', fog: '#1c2238', fogDen: 0.01, stars: 0.8, clouds: 0.2 },
+    layout: [
+      '##############################',
+      '#S.......#..........#.......S#',
+      '#..c.....#...C..C...#...KK...#',
+      '#........#..........#...KK...#',
+      '#..p..p..........p.......c...#',
+      '#........#..........#........#',
+      '####..####...hhhh...####..####',
+      '#........#..........#........#',
+      '#.C......#...f..f...#.....C..#',
+      '#........#..........#........#',
+      '#S...........P..............S#',
+      '#........#..........#........#',
+      '#..gg....#...hhhh...#....gg..#',
+      '#........#..........#........#',
+      '####..####..........####..####',
+      '#........#...C..C...#........#',
+      '#..c..p..............p....c..#',
+      '#........#..........#........#',
+      '#.KK.....#..ffff....#....KK..#',
+      '#S.......#..........#.......S#',
+      '##############################',
+    ],
+    props: 'house', chat: ['why are we in the admins house', 'shh he is asleep upstairs', 'his fridge is full of energy drinks', 'found his password on a sticky note', 'no wonder he is always afk'],
   },
 ];
 for (const m of MAPS) m.unlock *= 2;
@@ -596,6 +856,9 @@ CHAT.adminClean = ['WHAT', 'are you blind??', 'the admin is in on it', 'unbeliev
 CHAT.adminKick = ['GET OUT', 'JUSTICE', 'finally', 'bye cheater', 'the system works'];
 CHAT.banned = ['BANNED LMAO', 'ez ban', 'BotGuard actually works??', 'press F', 'enjoy your new account'];
 CHAT.jumpshot = ['mid air??', 'he jumped and hit that', 'bro is doing tricks', 'flying headshot lmao', 'show off', 'how do you aim in the air', 'parkour aimbot'];
+CHAT.rivalCall = ['{n} is cheating too lol', 'two cheaters in one lobby??', 'report {n} as well', 'is everyone walling today', '{n} has walls, i saw it'];
+CHAT.rivalTaunt = ['nice walls. mine are better', 'get a better loader', 'bandit sold you the cheap version', 'imagine paying for that', 'my cheats > your cheats'];
+CHAT.rivalDown = ['ok your loader is better', 'how did you beat MY walls', 'refund. refund now', 'my cheat expired mid match'];
 CHAT.panic = ['wait he stopped hitting everything', 'oh now he misses?', 'he turned it off when the admin came lol', 'suddenly legit'];
 
 const SERVER_LINES = [
@@ -698,7 +961,7 @@ Object.assign(CHAT, {
 });
 
 // the gun order for Hand-Me-Downs: big and silly first, the humble pistol last
-const GUNGAME_ORDER = ['launcher', 'rail', 'lmg', 'rifle', 'shotgun', 'smg', 'sniper', 'revolver', 'pistol'];
+const GUNGAME_ORDER = ['launcher', 'rail', 'lmg', 'rifle', 'burst', 'shotgun', 'smg', 'sniper', 'revolver', 'pistol'];
 
 /* ---------------- contracts: Bandit's odd jobs ---------------- */
 // stat: which tracked event counts. max: track the best single-match value instead of a running total.
@@ -708,6 +971,7 @@ const CONTRACTS = [
   { id: 'wall', text: 'Get {n} kills through walls', stat: 'wall', base: 8, pay: 1.6, req: () => Shop.S.wallbang || Save.data.weapons.rail },
   { id: 'multi', text: 'Get {n} multi-kills', stat: 'multi', base: 5, pay: 1.5 },
   { id: 'jump', text: 'Get {n} jump-shot kills', stat: 'jump', base: 5, pay: 1.7 },
+  { id: 'rival', text: 'Kill {n} rival cheaters', stat: 'rival', base: 2, pay: 2.5, fixed: true, req: () => Save.data.maps.court },
   { id: 'style', text: 'Score {n} style points in one match', stat: 'style', base: 400, pay: 1.4, max: true },
   { id: 'streak', text: 'Reach a {n}-kill streak in one match', stat: 'streak', base: 8, pay: 1.8, max: true },
   { id: 'wins', text: 'Win {n} matches', stat: 'win', base: 2, pay: 3 },
@@ -733,6 +997,11 @@ const RANK_XP = RANKS.map((_, i) => i === 0 ? 0 : Math.round(60 * Math.pow(1.62,
 /* ---------------- achievements ---------------- */
 const ACH = (id, name, desc, salt, test) => ({ id, name, desc, salt, test });
 const ACHIEVEMENTS = [
+  ACH('owner', 'Untouchable', 'Buy Server Owner. BotGuard works for you now.', 100, () => !!Save.data.owned.sp6),
+  ACH('rival10', 'Takes One To Know One', 'Kill 10 rival cheaters.', 30, s => (s.rivals || 0) >= 10),
+  ACH('wave', 'Survived The Wave', 'Get hit by a BotGuard ban wave.', 15, s => (s.waves || 0) >= 1),
+  ACH('pass25', 'Halfway There', 'Reach tier 25 of the Bandit Pass.', 30, s => Math.floor((s.passXp || 0) / PASS_XP) >= 25),
+  ACH('pass50', 'Pass Completed', 'Reach tier 50 of the Bandit Pass.', 80, s => Math.floor((s.passXp || 0) / PASS_XP) >= 50),
   ACH('jump25', 'Frequent Flyer', 'Get 25 jump-shot kills.', 20, s => (s.jumpKills || 0) >= 25),
   ACH('noscope', 'Who Needs A Scope', 'Get 10 no-scope kills with the LDR-50.', 25, s => (s.noScopes || 0) >= 10),
   ACH('stylish', 'Totally Stylish', 'Reach the top style rank in a match.', 40, s => (s.topStyleRank || 0) >= 6),
@@ -778,3 +1047,26 @@ const ACHIEVEMENTS = [
   ACH('smurf', 'New Account, Who Dis', 'Start over on a fresh account.', 50, () => (Save.data.smurf || 0) >= 1),
   ACH('rank', 'Admin Material', 'Reach the Admin Material rank.', 60, s => (s.xp || 0) >= RANK_XP[15]),
 ];
+
+/* ---------------- gun attachments (bought with loader parts from rival cheaters, or credits) ---------------- */
+const ATTACHMENTS = [
+  { id: 'reddot', slot: 'optic', name: 'Red Dot', parts: 2, desc: 'Aiming zooms a little more and tightens spread by another 15%.' },
+  { id: 'holo', slot: 'optic', name: 'Holo Sight', parts: 2, desc: 'Aim down sights 50% faster.' },
+  { id: 'suppressor', slot: 'muzzle', name: 'Suppressor', parts: 3, desc: 'Kills with this gun raise BotGuard detection 30% less. −10% damage.' },
+  { id: 'comp', slot: 'muzzle', name: 'Compensator', parts: 3, desc: '−40% recoil.' },
+  { id: 'extmag', slot: 'mag', name: 'Extended Mag', parts: 2, desc: '+40% magazine size.' },
+  { id: 'fastmag', slot: 'mag', name: 'Fast Mag', parts: 2, desc: 'Reload 35% faster.' },
+];
+const ATT_BY_ID = Object.fromEntries(ATTACHMENTS.map(a => [a.id, a]));
+const ATT_SLOTS = [['optic', 'Optic'], ['muzzle', 'Muzzle'], ['mag', 'Magazine']];
+const ATT_CR_PER_PART = 3000;
+
+/* ---------------- Bandit Pass: 50 tiers on the XP you already earn ---------------- */
+const PASS_XP = 150, PASS_TIERS = 50;
+const PASS_COSMETICS = [['skin', 'p_raccoon'], ['xhair', 'star'], ['skin', 'p_static'], ['killfx', 'glitchfx'], ['skin', 'p_sunset'],
+  ['xhair', 'ringx'], ['skin', 'p_toxic'], ['killfx', 'smoke'], ['xhair', 'hex'], ['skin', 'p_galaxy']];
+function passReward(i) {
+  if (i % 5 === 0) { const [kind, id] = PASS_COSMETICS[i / 5 - 1]; return { kind, id }; }
+  if (i % 5 === 2 || i % 5 === 4) return { kind: 'parts', n: i > 25 ? 2 : 1 };
+  return i % 2 ? { kind: 'salt', n: 15 + i * 2 } : { kind: 'cr', n: 10 + i };
+}

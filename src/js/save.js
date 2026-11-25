@@ -22,7 +22,7 @@ const Save = {
       },
       settings: { name: 'legit_player', sens: 1, fov: 74, vol: 0.7, quality: 1, dmgNums: true, shake: true, fps: false, invert: false },
       flags: { intro: false, firstMatch: false, autoQueue: true, banditHint: false },
-      contracts: [], ach: {}, rankSeen: 0, det: 0,
+      contracts: [], ach: {}, rankSeen: 0, det: 0, wave: 0, parts: 0, att: {}, attOwned: {}, passClaimed: 0,
     };
   },
   isObj(o) { return o && typeof o === 'object' && !Array.isArray(o); },
@@ -97,6 +97,29 @@ const Shop = {
     if (!m || Save.data.maps[id] || !this.spend(m.unlock)) return false;
     Save.data.maps[id] = true; Save.save(); return true;
   },
+  // gun attachments: owned per gun, one equipped per slot
+  attOf(wid) {
+    const a = (Save.data.att || {})[wid] || {}, o = {};
+    for (const [slot] of ATT_SLOTS) if (a[slot]) o[a[slot]] = true;
+    return o;
+  },
+  attOwned(wid, aid) { return !!(Save.data.attOwned || {})[wid + ':' + aid]; },
+  buyAtt(wid, aid, pay) {
+    const a = ATT_BY_ID[aid], D = Save.data;
+    if (!a || !D.weapons[wid] || this.attOwned(wid, aid)) return false;
+    if (pay === 'parts') { if ((D.parts || 0) < a.parts) return false; D.parts -= a.parts; }
+    else if (!this.spend(a.parts * ATT_CR_PER_PART)) return false;
+    D.attOwned[wid + ':' + aid] = true;
+    this.equipAtt(wid, aid, true);
+    Save.save(); return true;
+  },
+  equipAtt(wid, aid, on) {
+    const a = ATT_BY_ID[aid], D = Save.data;
+    if (!a || !this.attOwned(wid, aid)) return;
+    const cur = D.att[wid] || (D.att[wid] = {});
+    cur[a.slot] = (on === undefined ? cur[a.slot] !== aid : on) ? aid : null;
+    Save.save();
+  },
   modeOwned(id) { return id === 'ffa' || !!Save.data.modes[id]; },
   nextMode() { return MODES.find(m => !this.modeOwned(m.id)); },
   buyMode(id) {
@@ -117,7 +140,7 @@ const Shop = {
     const table = kind === 'skin' ? SKINS : kind === 'xhair' ? XHAIRS : KILLFX;
     const bag = kind === 'skin' ? 'skins' : kind === 'xhair' ? 'xhairs' : 'killfxs';
     const item = table.find(i => i.id === id);
-    if (!item || Save.data[bag][id] || !this.spendSalt(item.cost)) return false;
+    if (!item || item.pass || Save.data[bag][id] || !this.spendSalt(item.cost)) return false;
     Save.data[bag][id] = true; Save.save(); return true;
   },
   panic: false,
@@ -176,9 +199,25 @@ const Shop = {
     S.chips = a('in1'); S.chipRange = a('in2') ? 10 : 1.8; S.interest = a('in3'); S.sponsor = a('in4'); S.insider = a('in5');
     // GHOSTWARE
     S.scanMul = (a('gh1') ? 0.7 : 1) * (a('gh6') ? 0.6 : 1) * (a('gh7') ? 0 : 1); S.humanizer = a('gh2'); S.kernel = a('gh3');
-    S.panicKey = a('gh4'); S.streamProof = a('gh5'); S.coolMul = a('gh6') ? 2 : 1;
+    S.panicKey = a('gh4'); S.streamProof = a('gh5'); S.coolMul = a('gh6') ? 2 : 1; S.ring = a('gh7');
     // SPOOFER
-    S.shredder = a('sp1'); S.bribe = a('sp2'); S.hwid = a('sp3'); S.alt = a('sp4'); S.appeal = a('sp5');
+    S.shredder = a('sp1'); S.bribe = a('sp2'); S.hwid = a('sp3'); S.alt = a('sp4'); S.appeal = a('sp5'); S.owner = a('sp6');
+    // second-wave upgrades declare their effects as data (u.fx): multiply, add or set a stat
+    Object.assign(S, {
+      snapDet: 1, wallDet: 1, ambushBonus: 0, crit: 0, hbHeadX: 1, airSpread: 1, adsFast: 1, jump: 1, blinkCD: 1, airAccel: 1,
+      lifeOnKill: 0, respawn: 1, winMul: 1, stylePay: 1, freezeCD: 1, uavTime: 1, careMul: 1, orbitalCD: 1, strikeR: 1, kickCD: 1,
+      bountyAdd: 0, clipMul: 1, vampAdd: 0, exMul: 1, chainN: 2, slowAdd: 0, rewinds: 1, thiefCap: 60, slowCDMul: 1, chipMul: 1,
+      interestCap: 1, interestRate: 0.02, contractMul: 1, partsAdd: 0, coolAdd: 0, reportMul: 1, activeMul: 1, waveMul: 1,
+      kickPenalty: 0.5, fineMul: 1, adminTime: 1, payroll: false,
+    });
+    for (const u of UPGRADES) {
+      if (!u.fx || !a(u.id)) continue;
+      for (const k in u.fx.mul || {}) S[k] = (S[k] == null ? 1 : S[k]) * u.fx.mul[k];
+      for (const k in u.fx.add || {}) S[k] = (S[k] || 0) + u.fx.add[k];
+      for (const k in u.fx.set || {}) S[k] = u.fx.set[k];
+    }
+    S.hbHead = Math.max(S.hbBody, S.headVisual) * S.hbHeadX;
+    S.aimFov = Math.min(S.aimFov, 180 * DEG);
     S.risk = this.riskOf();
     this.S = S;
     return S;

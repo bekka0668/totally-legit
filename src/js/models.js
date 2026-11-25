@@ -44,6 +44,15 @@ const GUNS = {
     ],
     muzzle: [0, 0.05, -0.55], left: [-0.005, -0.005, -0.28],
   },
+  burst: {
+    parts: [
+      [0, 0.04, -0.06, 0.052, 0.07, 0.3, 0], [0, 0.045, -0.29, 0.046, 0.05, 0.18, 1], [0, 0.05, -0.43, 0.022, 0.022, 0.12, 2],
+      [0, 0.05, -0.5, 0.034, 0.034, 0.03, 2], [0, -0.06, -0.06, 0.034, 0.12, 0.05, 1, 0.12], [0, -0.05, 0.06, 0.034, 0.1, 0.04, 1, -0.25],
+      [0, 0.03, 0.21, 0.044, 0.085, 0.18, 0], [0, 0.088, -0.1, 0.03, 0.012, 0.26, 2], [0, 0.104, -0.04, 0.026, 0.024, 0.05, 2],
+      [0, 0.104, -0.068, 0.02, 0.02, 0.006, 3], [0.03, 0.04, -0.12, 0.008, 0.03, 0.12, 3],
+    ],
+    muzzle: [0, 0.05, -0.52], left: [-0.005, -0.005, -0.27],
+  },
   sniper: {
     parts: [
       [0, 0.03, -0.05, 0.05, 0.07, 0.4, 0], [0, 0.04, -0.5, 0.026, 0.026, 0.55, 2], [0, 0.04, -0.79, 0.042, 0.042, 0.06, 2],
@@ -170,6 +179,21 @@ const Models = {
       }
       GFX.push(B, m, p[3], p[4], p[5], c[0], c[1], c[2], 1, pat, e, spec, sec);
     }
+    // attachments
+    const at = o.att;
+    if (at) {
+      const mz = G.muzzle;
+      if (at.suppressor) { M4.translate(m, base, mz[0], mz[1], mz[2] - 0.08); GFX.push(B, m, 0.046, 0.046, 0.17, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.5, 0); }
+      if (at.comp) { M4.translate(m, base, mz[0], mz[1], mz[2] - 0.025); GFX.push(B, m, 0.052, 0.042, 0.05, COL_LIGHT[0], COL_LIGHT[1], COL_LIGHT[2], 1, 0, 0, 0.9, 0); }
+      const sp = G.parts.find(q => q[6] === 3);
+      if (sp && (at.reddot || at.holo)) {
+        M4.translate(m, base, sp[0], sp[1] - 0.016, sp[2] + 0.02); GFX.push(B, m, 0.05, 0.016, 0.06, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.5, 0);
+        M4.translate(m, base, sp[0], sp[1] + 0.004, sp[2] + 0.04); GFX.push(B, m, 0.05, 0.03, 0.006, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.5, 0);
+        const c = at.reddot ? [1, 0.2, 0.2] : [0.3, 0.9, 1];
+        M4.translate(m, base, sp[0], sp[1], sp[2] - 0.004); GFX.push(B, m, 0.012, 0.012, 0.004, c[0], c[1], c[2], 1, 0, 1, 0, 0);
+      }
+      if (at.extmag) { M4.translate(m, base, 0, -0.07, mz[2] * 0.25); GFX.push(B, m, 0.03, 0.09, 0.05, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.4, 0); }
+    }
     if (o.hands) {
       // right hand + forearm
       M4.translate(m, base, 0.0, -0.045, 0.03); M4.rotX(m, m, -0.28);
@@ -274,7 +298,7 @@ const Showroom = {
       M4.ident(m); M4.translate(m, m, 0, 1.25 + Math.sin(t * 1.4) * 0.05, 0); M4.rotY(m, m, t * 0.6); M4.rotZ(m, m, 0.12);
       const s = 3.2;
       for (let i = 0; i < 12; i++) if (i % 4 !== 3) m[i] *= s;
-      Models.gun(B, m, opt.weapon, opt.skin, { sight: opt.sight, hands: false });
+      Models.gun(B, m, opt.weapon, opt.skin, { sight: opt.sight, hands: false, att: Shop.attOf(opt.weapon) });
       Models.shadow(GFX.b.trans, 0, 0.23, 0, 1.4);
     }
   },

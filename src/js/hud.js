@@ -42,6 +42,20 @@ function drawCrosshair(c, x, y, xh, k) {
         for (const [ox, oy] of [[-1.05, -0.35], [-0.38, -0.95], [0.38, -0.95], [1.05, -0.35]]) { c.beginPath(); c.arc(x + ox * s, y + oy * s, s * 0.3, 0, TAU); c.fill(); }
         return;
       }
+      case 'star': {
+        const r = gap + size * 0.75, ri = r * 0.45;
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? ri : r; i ? c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+        c.closePath(); c.stroke(); return;
+      }
+      case 'ringx': {
+        const r = gap + size * 0.6, k = r * 0.5;
+        c.arc(x, y, r, 0, TAU); c.moveTo(x - k, y - k); c.lineTo(x + k, y + k); c.moveTo(x + k, y - k); c.lineTo(x - k, y + k); c.stroke(); return;
+      }
+      case 'hex': {
+        const r = gap + size * 0.6;
+        for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; i ? c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : c.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+        c.closePath(); c.stroke(); return;
+      }
       case 'diamond': {
         const r = gap + size * 0.6;
         c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); c.stroke(); return;
@@ -238,6 +252,7 @@ const HUD = {
       e.kick > 0 ? ['Admin kicks', 'Fake Admin', e.kick] : null,
       e.clip > 0 ? ['Clip farming', `${U.fmt(e.salt)} salt × 1 kill`, e.clip] : null,
       e.chips > 0 ? ['Credit chips', 'Loot Drops', e.chips] : null,
+      e.payroll > 0 ? ['Admin payroll', 'admins work for you now', e.payroll] : null,
       e.interest > 0 ? ['Interest', '2% of your wallet', e.interest] : null,
       e.win > 0 ? ['Win bonus', winWhy, e.win] : null,
     ].filter(Boolean);
@@ -295,9 +310,11 @@ const HUD = {
     const items = [];
     for (const c of X.doneContracts) items.push(`<li class="ok">Contract done: ${U.esc(c)}</li>`);
     for (const a of X.newAch) items.push(`<li class="achv">Achievement: <b>${U.esc(a.name)}</b> · +${a.salt} salt</li>`);
+    if (e.parts) items.push(`<li class="ok">+${e.parts} loader part${e.parts > 1 ? 's' : ''} from rival cheaters (spend them on attachments in the Arsenal)</li>`);
     for (const n of X.takeNotes()) items.push(`<li class="rk">${U.esc(n)}</li>`);
     return `<div class="sum-prog">
       <div class="sum-rank"><span>+${e.xp} XP</span><b>${U.esc(ri.name)}</b><div class="track"><i style="width:${Math.round(ri.frac * 100)}%"></i></div><em>${ri.next ? U.fmt(ri.xp - ri.cur) + ' / ' + U.fmt(ri.next - ri.cur) : 'max rank'}</em></div>
+      <div class="sum-rank pass"><span>Pass</span><b>Tier ${X.passInfo().tier}</b><div class="track"><i style="width:${Math.round(X.passInfo().frac * 100)}%"></i></div><em>${X.passInfo().tier >= PASS_TIERS ? 'complete' : X.passInfo().into + ' / ' + PASS_XP}</em></div>
       ${items.length ? `<ul>${items.join('')}</ul>` : ''}
     </div>`;
   },
@@ -422,7 +439,7 @@ const HUD = {
     c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     // bounty and boss markers
     for (const b of M.bots) {
-      if (!b.alive || b.gone || !(b.bounty || b.boss)) continue;
+      if (!b.alive || b.gone || !(b.bounty || b.boss || b.cheater)) continue;
       pt[0] = b.pos[0]; pt[1] = b.pos[1] + 2.5 * (b.scale || 1); pt[2] = b.pos[2];
       const s = GFX.project(pt, tmp);
       if (!s || s[0] < -60 || s[0] > w + 60 || s[1] < -60 || s[1] > h + 60) continue;
@@ -433,6 +450,9 @@ const HUD = {
         c.fillStyle = '#ff3d3d'; c.fillRect(x - bw / 2, y - 10, bw * fr, 6);
         c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText('RAID BOSS', x, y - 17);
         c.fillStyle = '#ffd0d0'; c.fillText('RAID BOSS', x, y - 17);
+      } else if (b.cheater) {
+        c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText('CHEATER ×6', x, y - 10);
+        c.fillStyle = '#d18cff'; c.fillText('CHEATER ×6', x, y - 10);
       } else {
         c.fillStyle = '#ffd23f'; c.beginPath(); c.arc(x, y - 6, 8, 0, TAU); c.fill();
         c.fillStyle = '#1b1503'; c.font = '800 12px Oxanium, "Segoe UI", sans-serif'; c.fillText('$', x, y - 2);
@@ -497,7 +517,7 @@ const HUD = {
     for (const b of M.bots) {
       if (!b.alive || b.gone) continue;
       const ally = b.team === 'blue';
-      c.fillStyle = b.bounty ? '#ffd23f' : ally ? '#4dd4ff' : M.mode && !M.mode.ffa ? '#ff5d5d' : b.colHex;
+      c.fillStyle = b.cheater ? '#b14dff' : b.bounty ? '#ffd23f' : ally ? '#4dd4ff' : M.mode && !M.mode.ffa ? '#ff5d5d' : b.colHex;
       c.beginPath(); c.arc(b.pos[0], b.pos[2], 2.2 / scale * 2, 0, TAU); c.fill();
       if (ally) { c.strokeStyle = '#ffffff'; c.lineWidth = 0.5; c.stroke(); }
     }

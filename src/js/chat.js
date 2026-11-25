@@ -84,7 +84,7 @@ const Chat = {
   say(bot, text, saltTier) {
     const S = Shop.S;
     const salt = SALT_PER_TIER[U.clamp(saltTier || 0, 0, 4)] * S.salt;
-    this.push({ name: bot.name, color: bot.colHex, text, kind: 'bot', salt });
+    this.push({ name: bot.cheater ? bot.name + ' [CHEATER]' : bot.name, color: bot.colHex, text, kind: 'bot', salt });
     bot.bubble = text; bot.bubbleT = 3.2;
     this.msgs++;
     if (salt > 0) {

@@ -637,6 +637,35 @@ input[type="range"] { width: 100%; accent-color: var(--signal); }
 .hs-feed .big { color: var(--signal); font-size: 15px; }
 @media (max-width: 700px) { .h-style { top: calc(190px + env(safe-area-inset-top, 0px)); width: 150px; } .hs-top b { font-size: 30px; } }
 
+/* ---------- attachments, Bandit Pass, ban waves ---------- */
+.att-box { display: grid; gap: 10px; }
+.att-box h4, .att-slot h5 { margin: 0; font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.att-slot { display: grid; gap: 6px; }
+.att-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.att { display: grid; gap: 4px; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.att.on { border-color: var(--signal); }
+.att b { font-size: 14px; }
+.att span { font-size: 12.5px; color: var(--muted); line-height: 1.3; }
+.att-act { display: flex; gap: 6px; flex-wrap: wrap; }
+.tier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.tier { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: 10px; min-height: 64px; }
+.tier span { font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); }
+.tier b { font-size: 13px; line-height: 1.2; font-weight: 600; }
+.tier.big { border-color: rgba(255, 79, 154, .45); }
+.tier.big b { color: #ffd0e4; }
+.tier.got { border-style: solid; border-color: var(--ok); background: rgba(95, 227, 161, .07); }
+.tier.got span::after { content: " · claimed"; color: var(--ok); }
+.tier.cur { border-style: solid; border-color: var(--signal); box-shadow: 0 0 0 1px var(--signal); }
+.sum-rank.pass span { color: var(--signal); }
+.wave { display: grid; gap: 8px; }
+.wave h2 { margin: 0; font-family: var(--f-display); font-size: 28px; }
+.wave.hit h2 { color: var(--danger); }
+.wave p { margin: 0; color: #cfd6e6; line-height: 1.45; }
+.wave .ov-row { justify-content: flex-end; }
+.fx-glitchfx { background: linear-gradient(90deg, #00e5ff 0 30%, transparent 30% 45%, #ff3df0 45% 70%, transparent 70%), #10172b; }
+.fx-smoke { background: radial-gradient(circle at 40% 45%, #9aa1ab 0 22%, transparent 23%), radial-gradient(circle at 62% 58%, #7d848e 0 26%, transparent 27%), #232a38; }
+@media (max-width: 700px) { .att-opts { grid-template-columns: 1fr; } }
+
 </style>
 </head>
 <body>
@@ -715,6 +744,7 @@ input[type="range"] { width: 100%; accent-color: var(--signal); }
         <button type="button" role="tab" data-tab="bandit" class="nav-bandit">Bandit's<span id="badge-bandit" class="badge" hidden></span></button>
         <button type="button" role="tab" data-tab="arsenal">Arsenal</button>
         <button type="button" role="tab" data-tab="locker">Locker</button>
+        <button type="button" role="tab" data-tab="pass">Pass</button>
         <button type="button" role="tab" data-tab="stats">Stats</button>
       </nav>
       <div class="wallet">
@@ -954,6 +984,9 @@ const WEAPONS = [
   { id: 'rifle', name: "Ol' Reliable", kind: 'Rifle', cost: 5000, dmg: 31, head: 3, rate: 0.1, mag: 26, reload: 1.9,
     spread: 0.02, auto: true, pellets: 1, recoil: 0.02, range: 200, snd: 'rifle', vm: [0.2, -0.24, -0.62],
     desc: 'Full-auto workhorse. Pairs beautifully with No Recoil.' },
+  { id: 'burst', name: 'Triple Threat', kind: 'Burst rifle', cost: 9000, dmg: 27, head: 3, rate: 0.36, mag: 30, reload: 2.0,
+    spread: 0.014, auto: false, pellets: 1, recoil: 0.016, range: 200, snd: 'rifle', burst: 3, burstGap: 0.065, vm: [0.2, -0.24, -0.62],
+    desc: 'Three rounds per click. For people who click a lot but hit a little.' },
   { id: 'sniper', name: 'LDR-50', kind: 'Sniper', cost: 15000, dmg: 115, head: 2.5, rate: 1.1, mag: 5, reload: 2.4,
     spread: 0.07, scopeSpread: 0, auto: false, pellets: 1, recoil: 0.11, range: 300, snd: 'sniper', scope: true, vm: [0.2, -0.24, -0.6],
     desc: 'Long distance relationship. Right-click to scope.' },
@@ -969,7 +1002,7 @@ const WEAPONS = [
 ];
 for (const w of WEAPONS) w.cost *= 2;
 // small credit multiplier per gun: pricier guns pay a little more per kill
-const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, sniper: 1.25, lmg: 1.3, launcher: 1.35, rail: 1.5 };
+const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, burst: 1.2, sniper: 1.25, lmg: 1.3, launcher: 1.35, rail: 1.5 };
 for (const w of WEAPONS) w.pay = WEAPON_PAY[w.id] || 1;
 const WEAPON_BY_ID = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
 
@@ -1111,13 +1144,100 @@ const UPGRADES = [
   { id: 'gh4', mod: 'gh', x: 0, y: 2, cost: 9000, req: ['gh2'], name: 'Panic Key', desc: 'Press P to unload every cheat at once, and P again to reload. Unloaded cheats cannot be detected.' },
   { id: 'gh5', mod: 'gh', x: 2, y: 2, cost: 12000, req: ['gh3'], name: 'Stream Proof', desc: 'Spectating admins cannot see your overlays, so watching you no longer doubles detection.' },
   { id: 'gh6', mod: 'gh', x: 1, y: 3, cost: 40000, req: ['gh4', 'gh5'], name: 'Polymorphic Build', desc: 'Scans find 40% less again, and detection cools twice as fast after each match.' },
-  { id: 'gh7', mod: 'gh', x: 1, y: 4, cost: 200000, req: ['gh6'], name: 'Ring -1', desc: 'Runs below the anticheat. Scans find nothing at all. Only obvious plays can flag you.' },
+  { id: 'gh7', mod: 'gh', x: 1, y: 4, cost: 200000, req: ['gh6'], name: 'Ring -1', desc: 'Runs below the anticheat. Scans find nothing at all, and obvious plays raise detection half as much.' },
   // SPOOFER
   { id: 'sp1', mod: 'sp', x: 1, y: 0, cost: 1200, name: 'Report Shredder', desc: 'Half of all reports against you go missing. Admins show up less.' },
   { id: 'sp2', mod: 'sp', x: 0, y: 1, cost: 6000, req: ['sp1'], name: 'Admin Bribe', desc: 'When an admin joins, 10% of this match\'s credits send them back to AFK.' },
   { id: 'sp3', mod: 'sp', x: 2, y: 1, cost: 15000, req: ['sp1'], name: 'HWID Spoofer', desc: 'Bans no longer fine your wallet. You still lose that match\'s credits.' },
   { id: 'sp4', mod: 'sp', x: 2, y: 2, cost: 45000, req: ['sp3'], name: 'Alt Account', desc: 'After a ban, detection resets to 0% instead of 40%.' },
   { id: 'sp5', mod: 'sp', x: 1, y: 3, cost: 90000, req: ['sp2', 'sp4'], name: 'Appeal Bot', desc: 'Once per match, a ban is appealed automatically and detection drops to 60%.' },
+  { id: 'sp6', mod: 'sp', x: 1, y: 4, cost: 600000, req: ['sp5', 'gh7'], name: 'Server Owner', desc: 'You bought the servers. No bans, no kicks, no ban waves. Admins report to you now. Needs Ring -1 too.' },
+  // ---- second wave of upgrades: a side branch per module, plus a capstone ----
+  { id: 'aim9', mod: 'aim', x: 3, y: 0, cost: 600, req: ['aim1'], name: "Recoil Assist", desc: "Lock-on pulls 30% harder.", risk: 1, fx: {"mul": {"aimStr": 1.3}} },
+  { id: 'aim10', mod: 'aim', x: 3, y: 1, cost: 2500, req: ['aim9'], name: "Sticky Crosshair", desc: "Lock-on cone is 40% wider.", risk: 1, fx: {"mul": {"aimFov": 1.4}} },
+  { id: 'aim11', mod: 'aim', x: 3, y: 2, cost: 9000, req: ['aim10'], name: "Humanized Lock", desc: "Snaps raise BotGuard detection 50% less.", risk: 0, fx: {"mul": {"snapDet": 0.5}} },
+  { id: 'aim12', mod: 'aim', x: 3, y: 3, cost: 30000, req: ['aim11'], name: "Bone Select", desc: "Headshots deal 25% more damage.", risk: 2, fx: {"mul": {"hsMul": 1.25}} },
+  { id: 'aim13', mod: 'aim', x: 1, y: 5, cost: 350000, req: ['aim8', 'aim12'], name: "Aim God", desc: "Lock-on pulls twice as hard and headshots deal 25% more again.", risk: 3, fx: {"mul": {"aimStr": 2, "hsMul": 1.25}} },
+  { id: 'esp8', mod: 'esp', x: 3, y: 0, cost: 500, req: ['esp1'], name: "Threat Radar", desc: "You see who is aiming at you and dodge: bots aim 10% worse.", risk: 1, fx: {"mul": {"botAcc": 0.9}} },
+  { id: 'esp9', mod: 'esp', x: 3, y: 1, cost: 2000, req: ['esp8'], name: "Glow Up", desc: "Ambush kills pay 30% more.", risk: 0.5, fx: {"add": {"ambushBonus": 0.3}} },
+  { id: 'esp10', mod: 'esp', x: 3, y: 2, cost: 6000, req: ['esp9'], name: "Wall Intel", desc: "Wall kills raise BotGuard detection 40% less.", risk: 0, fx: {"mul": {"wallDet": 0.6}} },
+  { id: 'esp11', mod: 'esp', x: 3, y: 3, cost: 25000, req: ['esp10'], name: "Pre-Aim", desc: "Lock-on cone is 25% wider: you already know where they are.", risk: 1, fx: {"mul": {"aimFov": 1.25}} },
+  { id: 'esp12', mod: 'esp', x: 1, y: 5, cost: 90000, req: ['esp7', 'esp11'], name: "All-Seeing", desc: "The radar is always on and ambush kills pay 60% more.", risk: 1, fx: {"set": {"radar": true}, "add": {"ambushBonus": 0.6}} },
+  { id: 'trg7', mod: 'trg', x: 3, y: 0, cost: 800, req: ['trg1'], name: "Burst Trigger", desc: "Fire rate +10%.", risk: 1, fx: {"mul": {"fireRate": 1.1}} },
+  { id: 'trg8', mod: 'trg', x: 3, y: 1, cost: 3000, req: ['trg7'], name: "Hair Trigger", desc: "Triggerbot reacts twice as fast.", risk: 1, fx: {"mul": {"trigDelay": 0.5}} },
+  { id: 'trg9', mod: 'trg', x: 3, y: 2, cost: 10000, req: ['trg8'], name: "Mag Dump", desc: "Magazines hold 20% more.", risk: 0.5, fx: {"mul": {"mag": 1.2}} },
+  { id: 'trg10', mod: 'trg', x: 3, y: 3, cost: 30000, req: ['trg9'], name: "Trigger Discipline", desc: "Fire rate +15%.", risk: 1, fx: {"mul": {"fireRate": 1.15}} },
+  { id: 'trg11', mod: 'trg', x: 1, y: 4, cost: 120000, req: ['trg6', 'trg10'], name: "Machine Mind", desc: "Fire rate +25%, and 10% of hits are critical (double damage).", risk: 3, fx: {"mul": {"fireRate": 1.25}, "add": {"crit": 0.1}} },
+  { id: 'hb6', mod: 'hb', x: 3, y: 0, cost: 300, req: ['hb1'], name: "Puffy", desc: "Body hitboxes +15%.", risk: 0.5, fx: {"mul": {"hbBody": 1.15}} },
+  { id: 'hb7', mod: 'hb', x: 3, y: 1, cost: 1500, req: ['hb6'], name: "Big Brain", desc: "Head hitboxes +20%.", risk: 1, fx: {"mul": {"hbHeadX": 1.2}} },
+  { id: 'hb8', mod: 'hb', x: 3, y: 2, cost: 6000, req: ['hb7'], name: "Hit Registration", desc: "Headshot kills pay 25% more.", risk: 0.5, fx: {"add": {"hsBonus": 0.25}} },
+  { id: 'hb9', mod: 'hb', x: 3, y: 3, cost: 25000, req: ['hb8'], name: "Spongebob Mode", desc: "Body hitboxes +30%.", risk: 2, fx: {"mul": {"hbBody": 1.3}} },
+  { id: 'hb10', mod: 'hb', x: 1, y: 4, cost: 150000, req: ['hb5', 'hb9'], name: "Event Horizon", desc: "All hitboxes +50%. They are basically buildings now.", risk: 4, fx: {"mul": {"hbBody": 1.5, "hbHeadX": 1.5}} },
+  { id: 'st6', mod: 'st', x: 3, y: 0, cost: 300, req: ['st1'], name: "Grip Tape", desc: "Recoil \u221220%.", risk: 0.5, fx: {"mul": {"recoil": 0.8}} },
+  { id: 'st7', mod: 'st', x: 3, y: 1, cost: 1500, req: ['st6'], name: "Gyro", desc: "Spread from moving and jumping \u221230%.", risk: 1, fx: {"mul": {"airSpread": 0.7}} },
+  { id: 'st8', mod: 'st', x: 3, y: 2, cost: 5000, req: ['st7'], name: "Muscle Memory", desc: "Fire rate +10%.", risk: 1, fx: {"mul": {"fireRate": 1.1}} },
+  { id: 'st9', mod: 'st', x: 3, y: 3, cost: 15000, req: ['st8'], name: "Iron Sights", desc: "Aim down sights 60% faster.", risk: 0.5, fx: {"mul": {"adsFast": 1.6}} },
+  { id: 'st10', mod: 'st', x: 1, y: 4, cost: 80000, req: ['st5', 'st9'], name: "Statue", desc: "Moving and jumping spread \u221260% more, recoil halved.", risk: 2, fx: {"mul": {"airSpread": 0.4, "recoil": 0.5}} },
+  { id: 'mv7', mod: 'mv', x: 3, y: 0, cost: 400, req: ['mv1'], name: "Light Shoes", desc: "Move 10% faster.", risk: 0.5, fx: {"mul": {"speed": 1.1}} },
+  { id: 'mv8', mod: 'mv', x: 3, y: 1, cost: 2000, req: ['mv7'], name: "Moon Boots", desc: "Jump 30% higher.", risk: 1, fx: {"mul": {"jump": 1.3}} },
+  { id: 'mv9', mod: 'mv', x: 3, y: 2, cost: 6000, req: ['mv8'], name: "Slide Cancel", desc: "Blink recharges 40% faster.", risk: 1, fx: {"mul": {"blinkCD": 0.6}} },
+  { id: 'mv10', mod: 'mv', x: 3, y: 3, cost: 20000, req: ['mv9'], name: "Parkour", desc: "Much better air control.", risk: 1, fx: {"mul": {"airAccel": 1.6}} },
+  { id: 'mv11', mod: 'mv', x: 1, y: 4, cost: 150000, req: ['mv6', 'mv10'], name: "Sonic", desc: "Move 25% faster again and jump 20% higher.", risk: 3, fx: {"mul": {"speed": 1.25, "jump": 1.2}} },
+  { id: 'am8', mod: 'am', x: 3, y: 0, cost: 300, req: ['am1'], name: "Drum Mag", desc: "Magazines hold 25% more.", risk: 0.5, fx: {"mul": {"mag": 1.25}} },
+  { id: 'am9', mod: 'am', x: 3, y: 1, cost: 1500, req: ['am8'], name: "Quick Strip", desc: "Reload 25% faster.", risk: 0.5, fx: {"mul": {"reload": 0.75}} },
+  { id: 'am10', mod: 'am', x: 3, y: 2, cost: 6000, req: ['am9'], name: "Hollow Tips", desc: "Damage +10%.", risk: 1, fx: {"mul": {"dmgMul": 1.1}} },
+  { id: 'am11', mod: 'am', x: 3, y: 3, cost: 25000, req: ['am10'], name: "Overpressure", desc: "8% of hits are critical (double damage).", risk: 2, fx: {"add": {"crit": 0.08}} },
+  { id: 'am12', mod: 'am', x: 1, y: 4, cost: 120000, req: ['am7', 'am11'], name: "Infinite Arsenal", desc: "Damage +20% and 7% more critical hits.", risk: 3, fx: {"mul": {"dmgMul": 1.2}, "add": {"crit": 0.07}} },
+  { id: 'pa7', mod: 'pa', x: 3, y: 0, cost: 300, req: ['pa1'], name: "Bandages", desc: "Heal 5 HP for every kill.", risk: 0.5, fx: {"add": {"lifeOnKill": 5}} },
+  { id: 'pa8', mod: 'pa', x: 3, y: 1, cost: 1500, req: ['pa7'], name: "Adrenaline", desc: "Heal 10 more HP for every kill.", risk: 1, fx: {"add": {"lifeOnKill": 10}} },
+  { id: 'pa9', mod: 'pa', x: 3, y: 2, cost: 6000, req: ['pa8'], name: "Plating", desc: "Take 15% less damage.", risk: 1, fx: {"mul": {"dmgTaken": 0.85}} },
+  { id: 'pa10', mod: 'pa', x: 3, y: 3, cost: 25000, req: ['pa9'], name: "Second Wind", desc: "Respawn twice as fast.", risk: 1, fx: {"mul": {"respawn": 0.5}} },
+  { id: 'pa11', mod: 'pa', x: 1, y: 4, cost: 130000, req: ['pa6', 'pa10'], name: "Untouchable", desc: "Take 30% less damage again and heal 20 HP per kill.", risk: 3, fx: {"mul": {"dmgTaken": 0.7}, "add": {"lifeOnKill": 20}} },
+  { id: 'mn9', mod: 'mn', x: 3, y: 0, cost: 500, req: ['mn1'], name: "Penny Pincher", desc: "Credits +10%.", risk: 0.5, fx: {"mul": {"cr": 1.1}} },
+  { id: 'mn10', mod: 'mn', x: 3, y: 1, cost: 2500, req: ['mn9'], name: "Tax Evasion", desc: "Win bonuses pay 50% more.", risk: 0, fx: {"mul": {"winMul": 1.5}} },
+  { id: 'mn11', mod: 'mn', x: 3, y: 2, cost: 8000, req: ['mn10'], name: "Crypto Miner", desc: "Style points pay 50% more at the end of a match.", risk: 0, fx: {"mul": {"stylePay": 1.5}} },
+  { id: 'mn12', mod: 'mn', x: 3, y: 3, cost: 30000, req: ['mn11'], name: "Offshore Account", desc: "Credits +15%.", risk: 1, fx: {"mul": {"cr": 1.15}} },
+  { id: 'mn13', mod: 'mn', x: 1, y: 5, cost: 500000, req: ['mn8', 'mn12'], name: "Infinite Money", desc: "Credits +25% on top of everything.", risk: 2, fx: {"mul": {"cr": 1.25}} },
+  { id: 'lg8', mod: 'lg', x: 3, y: 0, cost: 500, req: ['lg1'], name: "Jitter", desc: "Bots aim 10% worse.", risk: 1, fx: {"mul": {"botAcc": 0.9}} },
+  { id: 'lg9', mod: 'lg', x: 3, y: 1, cost: 2500, req: ['lg8'], name: "Ping Spike", desc: "Bots move 10% slower.", risk: 1, fx: {"mul": {"botSpeed": 0.9}} },
+  { id: 'lg10', mod: 'lg', x: 3, y: 2, cost: 8000, req: ['lg9'], name: "Long Freeze", desc: "Freeze Frame recharges 30% faster.", risk: 1, fx: {"mul": {"freezeCD": 0.7}} },
+  { id: 'lg11', mod: 'lg', x: 3, y: 3, cost: 25000, req: ['lg10'], name: "Packet Flood", desc: "+2 bots in every lobby.", risk: 1, fx: {"add": {"extraBots": 2}} },
+  { id: 'lg12', mod: 'lg', x: 1, y: 4, cost: 150000, req: ['lg7', 'lg11'], name: "Total Desync", desc: "Bots aim 30% worse and 2 more join every lobby.", risk: 3, fx: {"mul": {"botAcc": 0.7}, "add": {"extraBots": 2}} },
+  { id: 'ks7', mod: 'ks', x: 3, y: 0, cost: 1500, req: ['ks1'], name: "Spy Plane", desc: "Recon Drone lasts 50% longer.", risk: 0.5, fx: {"mul": {"uavTime": 1.5}} },
+  { id: 'ks8', mod: 'ks', x: 3, y: 1, cost: 4000, req: ['ks7'], name: "Bigger Crates", desc: "Care packages pay double.", risk: 0.5, fx: {"mul": {"careMul": 2}} },
+  { id: 'ks9', mod: 'ks', x: 3, y: 2, cost: 12000, req: ['ks8'], name: "Laser Capacitor", desc: "Orbital Laser recharges 35% faster.", risk: 1, fx: {"mul": {"orbitalCD": 0.65}} },
+  { id: 'ks10', mod: 'ks', x: 3, y: 3, cost: 30000, req: ['ks9'], name: "Cluster Bombs", desc: "Airstrike radius +50%.", risk: 1, fx: {"mul": {"strikeR": 1.5}} },
+  { id: 'ks11', mod: 'ks', x: 1, y: 4, cost: 200000, req: ['ks6', 'ks10'], name: "Killstreak Kingpin", desc: "Care packages pay double again and the laser recharges 35% faster.", risk: 2, fx: {"mul": {"careMul": 2, "orbitalCD": 0.65}} },
+  { id: 'so7', mod: 'so', x: 3, y: 0, cost: 500, req: ['so1'], name: "Copypasta", desc: "Angry chat drops 25% more salt.", risk: 0, fx: {"mul": {"salt": 1.25}} },
+  { id: 'so8', mod: 'so', x: 3, y: 1, cost: 2500, req: ['so7'], name: "Mod Friend", desc: "Fake Admin recharges 40% faster.", risk: 0.5, fx: {"mul": {"kickCD": 0.6}} },
+  { id: 'so9', mod: 'so', x: 3, y: 2, cost: 8000, req: ['so8'], name: "Wanted Poster", desc: "Bounties pay 3\u00d7 more.", risk: 0.5, fx: {"add": {"bountyAdd": 3}} },
+  { id: 'so10', mod: 'so', x: 3, y: 3, cost: 25000, req: ['so9'], name: "Viral Clip", desc: "Clip Farming pays double.", risk: 0, fx: {"mul": {"clipMul": 2}} },
+  { id: 'so11', mod: 'so', x: 1, y: 4, cost: 150000, req: ['so6', 'so10'], name: "Influencer Deal", desc: "Angry chat drops 50% more salt again.", risk: 0, fx: {"mul": {"salt": 1.5}} },
+  { id: 'gs7', mod: 'gs', x: 3, y: 0, cost: 800, req: ['gs1'], name: "Polished Barrel", desc: "Damage +10%.", risk: 1, fx: {"mul": {"dmgMul": 1.1}} },
+  { id: 'gs8', mod: 'gs', x: 3, y: 1, cost: 3000, req: ['gs7'], name: "Lucky Rounds", desc: "5% of hits are critical (double damage).", risk: 1, fx: {"add": {"crit": 0.05}} },
+  { id: 'gs9', mod: 'gs', x: 3, y: 2, cost: 10000, req: ['gs8'], name: "Bloodsucker", desc: "Heal 3 more HP for every hit.", risk: 1, fx: {"add": {"vampAdd": 3}} },
+  { id: 'gs10', mod: 'gs', x: 3, y: 3, cost: 30000, req: ['gs9'], name: "Big Boom", desc: "Explosive Rounds hit 50% harder.", risk: 1, fx: {"mul": {"exMul": 1.5}} },
+  { id: 'gs11', mod: 'gs', x: 1, y: 4, cost: 150000, req: ['gs6', 'gs10'], name: "Chain Reaction", desc: "Chain Lightning arcs to 4 bots, and 5% more crits.", risk: 3, fx: {"set": {"chainN": 4}, "add": {"crit": 0.05}} },
+  { id: 'ch6', mod: 'ch', x: 3, y: 0, cost: 800, req: ['ch1'], name: "Speed Loader II", desc: "Reload 15% faster.", risk: 0.5, fx: {"mul": {"reload": 0.85}} },
+  { id: 'ch7', mod: 'ch', x: 3, y: 1, cost: 3000, req: ['ch6'], name: "Long Exposure", desc: "Bullet Time lasts 3 s longer.", risk: 1, fx: {"add": {"slowAdd": 3}} },
+  { id: 'ch8', mod: 'ch', x: 3, y: 2, cost: 12000, req: ['ch7'], name: "Deja Vu", desc: "Rewind works twice per match.", risk: 1, fx: {"set": {"rewinds": 2}} },
+  { id: 'ch9', mod: 'ch', x: 3, y: 3, cost: 30000, req: ['ch8'], name: "Stolen Hours", desc: "Time Thief can add up to 120 s.", risk: 1, fx: {"set": {"thiefCap": 120}} },
+  { id: 'ch10', mod: 'ch', x: 1, y: 4, cost: 150000, req: ['ch5', 'ch9'], name: "Time Lord", desc: "Bullet Time recharges twice as fast and Rewind works 3 times per match.", risk: 2, fx: {"mul": {"slowCDMul": 0.5}, "set": {"rewinds": 3}} },
+  { id: 'in6', mod: 'in', x: 3, y: 0, cost: 500, req: ['in1'], name: "Coupon Code", desc: "Credit chips are worth 50% more.", risk: 0, fx: {"mul": {"chipMul": 1.5}} },
+  { id: 'in7', mod: 'in', x: 3, y: 1, cost: 2500, req: ['in6'], name: "Day Trader", desc: "Interest can pay twice as much.", risk: 0, fx: {"mul": {"interestCap": 2}} },
+  { id: 'in8', mod: 'in', x: 3, y: 2, cost: 8000, req: ['in7'], name: "Black Friday", desc: "Contracts pay 50% more.", risk: 0, fx: {"mul": {"contractMul": 1.5}} },
+  { id: 'in9', mod: 'in', x: 3, y: 3, cost: 25000, req: ['in8'], name: "Parts Dealer", desc: "Rival cheaters drop 1 more loader part.", risk: 0, fx: {"add": {"partsAdd": 1}} },
+  { id: 'in10', mod: 'in', x: 1, y: 4, cost: 150000, req: ['in5', 'in9'], name: "Hedge Fund", desc: "Interest pays 4% of your wallet, and chips are worth 50% more again.", risk: 0, fx: {"set": {"interestRate": 0.04}, "mul": {"chipMul": 1.5}} },
+  { id: 'gh8', mod: 'gh', x: 3, y: 0, cost: 1000, req: ['gh1'], name: "Clean Install", desc: "Detection cools 5% more after every match.", risk: 0, fx: {"add": {"coolAdd": 5}} },
+  { id: 'gh9', mod: 'gh', x: 3, y: 1, cost: 4000, req: ['gh8'], name: "VPN Hop", desc: "Admins need 50% more reports before they show up.", risk: 0, fx: {"mul": {"reportMul": 1.5}} },
+  { id: 'gh10', mod: 'gh', x: 3, y: 2, cost: 12000, req: ['gh9'], name: "Spoofed Telemetry", desc: "Obvious plays raise detection 20% less.", risk: 0, fx: {"mul": {"activeMul": 0.8}} },
+  { id: 'gh11', mod: 'gh', x: 3, y: 3, cost: 40000, req: ['gh10'], name: "Ghost Protocol", desc: "Ban-wave risk builds up half as fast.", risk: 0, fx: {"mul": {"waveMul": 0.5}} },
+  { id: 'gh12', mod: 'gh', x: 1, y: 5, cost: 300000, req: ['gh7', 'gh11'], name: "Invisible", desc: "Obvious plays raise detection 40% less again, and you cool 10% more per match.", risk: 0, fx: {"mul": {"activeMul": 0.6}, "add": {"coolAdd": 10}} },
+  { id: 'sp7', mod: 'sp', x: 3, y: 0, cost: 2000, req: ['sp1'], name: "Lawyer", desc: "Admin kicks only take 25% of the match's credits.", risk: 0, fx: {"set": {"kickPenalty": 0.25}} },
+  { id: 'sp8', mod: 'sp', x: 3, y: 1, cost: 6000, req: ['sp7'], name: "Fine Print", desc: "Ban fines are halved.", risk: 0, fx: {"mul": {"fineMul": 0.5}} },
+  { id: 'sp9', mod: 'sp', x: 3, y: 2, cost: 15000, req: ['sp8'], name: "Short Attention Span", desc: "Admins only watch for 60% as long.", risk: 0, fx: {"mul": {"adminTime": 0.6}} },
+  { id: 'sp10', mod: 'sp', x: 3, y: 3, cost: 40000, req: ['sp9'], name: "Admin Payroll", desc: "Every admin who shows up pays you 10 kills of credits. They work for you.", risk: 0, fx: {"set": {"payroll": true}} },
+  { id: 'sp11', mod: 'sp', x: 1, y: 5, cost: 800000, req: ['sp6', 'sp10'], name: "Landlord", desc: "You own every lobby: credits +20%.", risk: 0, fx: {"mul": {"cr": 1.2}} },
 ];
 // balance pass: cheats cost 2.5x what they used to, so the early game takes a few matches per cheat
 for (const u of UPGRADES) u.cost = Math.round(u.cost * 2.5 / 10) * 10;
@@ -1139,7 +1259,7 @@ const UPGRADE_RISK = {
   ch1: 0.5, ch2: 2, ch3: 2, ch4: 2, ch5: 2,
   in1: 0.5, in2: 0.5, in3: 0, in4: 0, in5: 0,
 };
-for (const u of UPGRADES) u.risk = UPGRADE_RISK[u.id] || 0;
+for (const u of UPGRADES) u.risk = u.risk != null ? u.risk : UPGRADE_RISK[u.id] || 0;
 const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 
 /* ---------------- cosmetics (bought with salt) ---------------- */
@@ -1165,6 +1285,12 @@ const SKINS = [
   { id: 'bandit', name: 'Bandit Pink', cost: 700, c0: '#ff4f9a', c1: '#2a1530', pat: 4, spec: 0.6 },
   { id: 'chrome', name: 'Mirror Chrome', cost: 1100, c0: '#e6ebf2', c1: '#7d8896', pat: 0, spec: 1.8 },
   { id: 'void', name: 'The Void', cost: 2500, c0: '#06060c', c1: '#3b1d6e', pat: 13, spec: 1.1 },
+  // Bandit Pass exclusives
+  { id: 'p_static', name: 'Static Noise', cost: 0, pass: true, c0: '#d9dde4', c1: '#2a2d33', pat: 6, spec: 0.4 },
+  { id: 'p_sunset', name: 'Rooftop Sunset', cost: 0, pass: true, c0: '#ff9b6a', c1: '#5b2a6e', pat: 0, spec: 0.8 },
+  { id: 'p_toxic', name: 'Toxic Lobby', cost: 0, pass: true, c0: '#7cff4d', c1: '#1a2b12', pat: 4, spec: 0.6 },
+  { id: 'p_galaxy', name: 'Moon Base', cost: 0, pass: true, c0: '#1b1446', c1: '#8fb3ff', pat: 13, spec: 1.2 },
+  { id: 'p_raccoon', name: 'Raccoon Stripe', cost: 0, pass: true, c0: '#8a8c97', c1: '#17151b', pat: 3, spec: 0.4 },
 ];
 const SKIN_BY_ID = Object.fromEntries(SKINS.map(s => [s.id, s]));
 
@@ -1182,6 +1308,9 @@ const XHAIRS = [
   { id: 'diamond', name: 'Diamond', cost: 60 },
   { id: 'brackets', name: 'Brackets', cost: 80 },
   { id: 'triangle', name: 'Triforce-ish', cost: 120 },
+  { id: 'star', name: 'Gold Star', cost: 0, pass: true },
+  { id: 'ringx', name: 'Target Locked', cost: 0, pass: true },
+  { id: 'hex', name: 'Hex Key', cost: 0, pass: true },
 ];
 const XHAIR_COLORS = ['#7cffb2', '#4df0ff', '#ffffff', '#ffe24d', '#ff5ccf', '#ff4d4d', '#9d7bff', '#ff9a3c'];
 
@@ -1193,6 +1322,8 @@ const KILLFX = [
   { id: 'fireworks', name: 'Fireworks', cost: 420, desc: 'Sparks fly straight up. Very subtle.' },
   { id: 'saltfx', name: 'Salt Shaker', cost: 300, desc: 'Bots crumble into a pile of salt. Fitting.' },
   { id: 'banned', name: 'BANNED', cost: 650, desc: 'A big red BANNED stamp over every kill. The irony is free.' },
+  { id: 'glitchfx', name: 'Desync', cost: 0, pass: true, desc: 'Bots smear sideways into cyan and magenta cubes. Bandit Pass only.' },
+  { id: 'smoke', name: 'Logged Off', cost: 0, pass: true, desc: 'Bots puff into a slow grey cloud. Bandit Pass only.' },
 ];
 
 /* ---------------- maps ---------------- */
@@ -1238,6 +1369,40 @@ function genMega() {
   const spawns = [[1, 1], [30, 1], [1, 30], [30, 30], [15, 1], [16, 30], [1, 16], [30, 15], [8, 8], [23, 8], [8, 23], [23, 23], [15, 15], [16, 16], [1, 8], [30, 23], [8, 1], [23, 30]];
   spawns.forEach(([q, r]) => { g[r][q] = 'S'; });
   g[28][16] = 'P';
+  return g.map(r => r.join(''));
+}
+
+function genRuins() {
+  const W = 28, H = 20, g = [], rnd = U.rng(7331);
+  for (let r = 0; r < H; r++) g.push(Array.from({ length: W }, (_, q) => (r === 0 || q === 0 || r === H - 1 || q === W - 1) ? '#' : '.'));
+  const put = (q, r, ch) => { if (q > 1 && r > 1 && q < W - 2 && r < H - 2 && g[r][q] === '.') g[r][q] = ch; };
+  // broken wall stubs, never longer than 3 so the ruins stay open
+  for (let i = 0; i < 26; i++) {
+    const q = 2 + Math.floor(rnd() * (W - 4)), r = 2 + Math.floor(rnd() * (H - 4)), hz = rnd() < 0.5, len = 1 + Math.floor(rnd() * 3);
+    const ch = rnd() < 0.55 ? '#' : 'h';
+    for (let k = 0; k < len; k++) put(hz ? q + k : q, hz ? r : r + k, ch);
+  }
+  for (let i = 0; i < 12; i++) put(2 + Math.floor(rnd() * (W - 4)), 2 + Math.floor(rnd() * (H - 4)), rnd() < 0.5 ? 'p' : 'c');
+  for (let q = 1; q < W - 1; q++) g[10][q] = '.';
+  for (let r = 1; r < H - 1; r++) g[r][14] = '.';
+  [[1, 1], [26, 1], [1, 18], [26, 18], [7, 5], [20, 5], [7, 14], [20, 14], [14, 2], [14, 17]].forEach(([q, r]) => { g[r][q] = 'S'; });
+  g[10][14] = 'P';
+  return g.map(r => r.join(''));
+}
+
+function genVolcano() {
+  const N = 30, c = (N - 1) / 2, g = [], rnd = U.rng(666);
+  for (let r = 0; r < N; r++) { const row = []; for (let q = 0; q < N; q++) row.push(Math.hypot(q - c, r - c) > 14 ? '#' : '.'); g.push(row); }
+  const put = (q, r, ch) => { if (g[r] && g[r][q] === '.') g[r][q] = ch; };
+  // lab blocks in a ring, rock clusters scattered
+  for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; const q = Math.round(c + Math.cos(a) * 8), r = Math.round(c + Math.sin(a) * 8); put(q, r, 'K'); put(q + 1, r, 'K'); }
+  for (let i = 0; i < 30; i++) { const q = 3 + Math.floor(rnd() * 24), r = 3 + Math.floor(rnd() * 24); put(q, r, rnd() < 0.6 ? 'C' : 'p'); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + 0.3; put(Math.round(c + Math.cos(a) * 4), Math.round(c + Math.sin(a) * 4), 'h'); }
+  for (let r = 1; r < N - 1; r++) { if (g[r][15] !== '#') g[r][15] = '.'; }
+  for (let q = 1; q < N - 1; q++) { if (g[15][q] !== '#') g[15][q] = '.'; }
+  const spawns = [[15, 2], [15, 27], [2, 15], [27, 15], [7, 7], [22, 7], [7, 22], [22, 22], [11, 11], [18, 18], [11, 18], [18, 11]];
+  spawns.forEach(([q, r]) => { if (g[r][q] !== '#') g[r][q] = 'S'; });
+  g[15][15] = 'P';
   return g.map(r => r.join(''));
 }
 
@@ -1310,6 +1475,29 @@ const MAPS = [
     props: 'yard',
   },
   {
+    id: 'garage', name: 'Parking Garage', mode: 'FFA', blurb: 'Concrete pillars, oil stains, four bots and terrible echo.',
+    bots: 4, cr: 28, time: 80, unlock: 350, wallH: 3.4,
+    bot: { dmg: 9, acc: 0.22, react: 0.75, fire: 0.52, speed: 3.9 },
+    col: { floor: '#5d6068', wall: '#8a8f98', crate: '#7a5c3e', half: '#c9b43a', pillar: '#a3a8b0', hedge: '#4d8b46', accent: '#ffd23f' },
+    pat: { floor: 14, wall: 14 },
+    env: { zenith: '#2a3140', horizon: '#6c7385', sun: [0.2, -0.95, 0.2], sunCol: '#fff4d6', sky: '#4a5262', gnd: '#3c3e44', fog: '#3a3f4b', fogDen: 0.02, stars: 0, clouds: 0 },
+    layout: [
+      '##################',
+      '#P...p....p....S.#',
+      '#.cc.........cc..#',
+      '#....p....p......#',
+      '#hhhh....hhhh..h.#',
+      '#....p....p......#',
+      '#.C............C.#',
+      '#....p....p......#',
+      '#..hhhh....hhhh..#',
+      '#S...p....p.....S#',
+      '#........c.......#',
+      '##################',
+    ],
+    props: 'garage', chat: ['who parked here', 'my car alarm keeps going off', 'level 2 is free parking right', 'it echoes so much in here'],
+  },
+  {
     id: 'court', name: 'Courtyard', mode: 'FFA', blurb: 'Hedges, pillars and a fountain nobody asked for.',
     bots: 5, cr: 35, time: 90, unlock: 700, wallH: 4.8,
     bot: { dmg: 9, acc: 0.24, react: 0.7, fire: 0.5, speed: 4.0 },
@@ -1333,6 +1521,31 @@ const MAPS = [
       '##################',
     ],
     props: 'court',
+  },
+  {
+    id: 'snow', name: 'Snowed In', mode: 'FFA', blurb: 'An arctic outpost buried in drifts. Seven bots, cold hands.',
+    bots: 7, cr: 50, time: 90, unlock: 1900, wallH: 4.6,
+    bot: { dmg: 9, acc: 0.26, react: 0.68, fire: 0.48, speed: 3.9 },
+    col: { floor: '#e6edf3', wall: '#9fb2c4', crate: '#7c5a3a', half: '#c7d3de', pillar: '#d9e2ea', hedge: '#f2f6fa', accent: '#3db8ff' },
+    pat: { floor: 14, wall: 9 },
+    env: { zenith: '#7fa6cf', horizon: '#eef4fa', sun: [-0.3, -0.6, -0.7], sunCol: '#ffffff', sky: '#c9d9ea', gnd: '#c9d3dc', fog: '#e8eef4', fogDen: 0.022, stars: 0, clouds: 0.8 },
+    layout: [
+      '####################',
+      '#S.....g.....K....S#',
+      '#..gg..g..c..K..c..#',
+      '#..................#',
+      '#.c...KKK....gg....#',
+      '#.....KKK..........#',
+      '#..g.......C..p....#',
+      '#..g..p.........g..#',
+      '#........gg.....g..#',
+      '#.KK..c......KKK...#',
+      '#.KK.........KKK.c.#',
+      '#..c....g..........#',
+      '#S.......P........S#',
+      '####################',
+    ],
+    props: 'snow', chat: ['my fingers are frozen', 'cant see anything in this snow', 'who built a snowman over there', 'brr'],
   },
   {
     id: 'warehouse', name: 'Warehouse 9', mode: 'FFA', blurb: 'Shelving, containers, flickering lights. Eight bots.',
@@ -1360,6 +1573,31 @@ const MAPS = [
       '######################',
     ],
     props: 'warehouse',
+  },
+  {
+    id: 'arcade', name: 'Neon Arcade', mode: 'FFA', blurb: 'Cabinets, carpet and a prize counter. Nine bots, insert coin.',
+    bots: 9, cr: 70, time: 95, unlock: 5500, wallH: 4.2,
+    bot: { dmg: 10, acc: 0.29, react: 0.6, fire: 0.45, speed: 4.2 },
+    col: { floor: '#1b1238', wall: '#2a1a50', crate: '#ff3df0', half: '#3a2470', pillar: '#4b2d8c', hedge: '#4d8b46', accent: '#3dffe0' },
+    pat: { floor: 12, wall: 16 },
+    env: { zenith: '#0a0520', horizon: '#3b1366', sun: [0.2, -0.9, 0.3], sunCol: '#e0c8ff', sky: '#2d1a55', gnd: '#150c2e', fog: '#1e0f3a', fogDen: 0.016, stars: 0.6, clouds: 0 },
+    layout: [
+      '######################',
+      '#S..p.p.p....p.p.p..S#',
+      '#....................#',
+      '#.hh....C....C....hh.#',
+      '#....p.p......p.p....#',
+      '#.c..................#',
+      '#....hhh..ff..hhh..c.#',
+      '#....hhh..ff..hhh....#',
+      '#.c..................#',
+      '#....p.p......p.p....#',
+      '#.hh....C....C....hh.#',
+      '#....................#',
+      '#S..p.p.p.P..p.p.p..S#',
+      '######################',
+    ],
+    props: 'arcade', chat: ['high score is mine', 'who unplugged the dance machine', 'i have 400 tickets', 'insert coin to continue'],
   },
   {
     id: 'servers', name: 'Server Farm', mode: 'FFA', blurb: 'Rows of humming racks. The admin left the door open. Ten bots.',
@@ -1418,6 +1656,16 @@ const MAPS = [
     props: 'roofs',
   },
   {
+    id: 'desert', name: 'Desert Ruins', mode: 'FFA', blurb: 'Broken walls, burning sand, fourteen bots and no shade.',
+    bots: 14, cr: 130, time: 110, unlock: 30000, wallH: 3.6,
+    bot: { dmg: 11, acc: 0.32, react: 0.53, fire: 0.41, speed: 4.4 },
+    col: { floor: '#d9b77a', wall: '#c09a62', crate: '#8a6236', half: '#b8925c', pillar: '#e2c896', hedge: '#6b8a3f', accent: '#ff7a2e' },
+    pat: { floor: 14, wall: 10 },
+    env: { zenith: '#3a7ad0', horizon: '#ffe2a8', sun: [0.4, -0.85, 0.3], sunCol: '#fff0c8', sky: '#d9c9a8', gnd: '#b8955c', fog: '#f2dcae', fogDen: 0.009, stars: 0, clouds: 0.15 },
+    layout: genRuins(),
+    props: 'desert', chat: ['sand in my keyboard', 'it is so hot', 'these ruins are older than the admin', 'water break?'],
+  },
+  {
     id: 'colosseum', name: 'Colosseum', mode: 'FFA', blurb: 'A night arena under the stars. Eighteen bots.',
     bots: 18, cr: 160, time: 120, unlock: 60000, wallH: 5,
     bot: { dmg: 12, acc: 0.34, react: 0.5, fire: 0.4, speed: 4.4 },
@@ -1426,6 +1674,16 @@ const MAPS = [
     env: { zenith: '#070c24', horizon: '#33406e', sun: [-0.3, -0.9, 0.3], sunCol: '#aab8ff', sky: '#4d5a8c', gnd: '#3e3528', fog: '#232b4d', fogDen: 0.012, stars: 1, clouds: 0.15 },
     layout: genColosseum(),
     props: 'colosseum',
+  },
+  {
+    id: 'volcano', name: 'Volcano Lab', mode: 'FFA', blurb: 'A secret lab inside a volcano. Twenty-four bots. Do not touch the glowing stuff.',
+    bots: 24, cr: 210, time: 120, unlock: 115000, wallH: 5,
+    bot: { dmg: 12, acc: 0.35, react: 0.48, fire: 0.39, speed: 4.5 },
+    col: { floor: '#3a2a26', wall: '#5a3a30', crate: '#2e3640', half: '#4a3a34', pillar: '#6a4a3a', hedge: '#4d8b46', accent: '#ff5a1f' },
+    pat: { floor: 14, wall: 10 },
+    env: { zenith: '#1a0606', horizon: '#ff5a1f', sun: [-0.2, -0.8, 0.5], sunCol: '#ffb070', sky: '#6a1e10', gnd: '#2a1410', fog: '#4a160c', fogDen: 0.014, stars: 0.2, clouds: 0.3 },
+    layout: genVolcano(),
+    props: 'volcano', chat: ['why is the floor warm', 'whose evil lab is this', 'i smell sulfur', 'is that lava or a texture'],
   },
   {
     id: 'mega', name: 'Megalobby', mode: 'FFA', blurb: 'Thirty-two bots on a neon grid. Pure chaos.',
@@ -1446,6 +1704,38 @@ const MAPS = [
     env: { zenith: '#000000', horizon: '#141a2e', sun: [0.5, -0.6, -0.6], sunCol: '#ffffff', sky: '#1a2038', gnd: '#55575e', fog: '#0c1020', fogDen: 0.006, stars: 1, clouds: 0 },
     layout: genMoon(),
     props: 'moon',
+  },
+  {
+    id: 'house', name: "The Admin's House", mode: 'FFA', blurb: 'You found where the admin lives. Forty-eight bots, and he is asleep upstairs.',
+    bots: 48, cr: 600, time: 140, unlock: 3000000, wallH: 4.4,
+    bot: { dmg: 15, acc: 0.4, react: 0.4, fire: 0.35, speed: 4.8 },
+    col: { floor: '#8a6a4a', wall: '#d8ccb8', crate: '#6a4a8a', half: '#a88a6a', pillar: '#c9b89a', hedge: '#4d8b46', accent: '#ff4f9a' },
+    pat: { floor: 8, wall: 10 },
+    env: { zenith: '#101830', horizon: '#3a4a70', sun: [0.3, -0.8, -0.4], sunCol: '#ffe6c8', sky: '#2a3450', gnd: '#3a2e24', fog: '#1c2238', fogDen: 0.01, stars: 0.8, clouds: 0.2 },
+    layout: [
+      '##############################',
+      '#S.......#..........#.......S#',
+      '#..c.....#...C..C...#...KK...#',
+      '#........#..........#...KK...#',
+      '#..p..p..........p.......c...#',
+      '#........#..........#........#',
+      '####..####...hhhh...####..####',
+      '#........#..........#........#',
+      '#.C......#...f..f...#.....C..#',
+      '#........#..........#........#',
+      '#S...........P..............S#',
+      '#........#..........#........#',
+      '#..gg....#...hhhh...#....gg..#',
+      '#........#..........#........#',
+      '####..####..........####..####',
+      '#........#...C..C...#........#',
+      '#..c..p..............p....c..#',
+      '#........#..........#........#',
+      '#.KK.....#..ffff....#....KK..#',
+      '#S.......#..........#.......S#',
+      '##############################',
+    ],
+    props: 'house', chat: ['why are we in the admins house', 'shh he is asleep upstairs', 'his fridge is full of energy drinks', 'found his password on a sticky note', 'no wonder he is always afk'],
   },
 ];
 for (const m of MAPS) m.unlock *= 2;
@@ -1530,6 +1820,9 @@ CHAT.adminClean = ['WHAT', 'are you blind??', 'the admin is in on it', 'unbeliev
 CHAT.adminKick = ['GET OUT', 'JUSTICE', 'finally', 'bye cheater', 'the system works'];
 CHAT.banned = ['BANNED LMAO', 'ez ban', 'BotGuard actually works??', 'press F', 'enjoy your new account'];
 CHAT.jumpshot = ['mid air??', 'he jumped and hit that', 'bro is doing tricks', 'flying headshot lmao', 'show off', 'how do you aim in the air', 'parkour aimbot'];
+CHAT.rivalCall = ['{n} is cheating too lol', 'two cheaters in one lobby??', 'report {n} as well', 'is everyone walling today', '{n} has walls, i saw it'];
+CHAT.rivalTaunt = ['nice walls. mine are better', 'get a better loader', 'bandit sold you the cheap version', 'imagine paying for that', 'my cheats > your cheats'];
+CHAT.rivalDown = ['ok your loader is better', 'how did you beat MY walls', 'refund. refund now', 'my cheat expired mid match'];
 CHAT.panic = ['wait he stopped hitting everything', 'oh now he misses?', 'he turned it off when the admin came lol', 'suddenly legit'];
 
 const SERVER_LINES = [
@@ -1632,7 +1925,7 @@ Object.assign(CHAT, {
 });
 
 // the gun order for Hand-Me-Downs: big and silly first, the humble pistol last
-const GUNGAME_ORDER = ['launcher', 'rail', 'lmg', 'rifle', 'shotgun', 'smg', 'sniper', 'revolver', 'pistol'];
+const GUNGAME_ORDER = ['launcher', 'rail', 'lmg', 'rifle', 'burst', 'shotgun', 'smg', 'sniper', 'revolver', 'pistol'];
 
 /* ---------------- contracts: Bandit's odd jobs ---------------- */
 // stat: which tracked event counts. max: track the best single-match value instead of a running total.
@@ -1642,6 +1935,7 @@ const CONTRACTS = [
   { id: 'wall', text: 'Get {n} kills through walls', stat: 'wall', base: 8, pay: 1.6, req: () => Shop.S.wallbang || Save.data.weapons.rail },
   { id: 'multi', text: 'Get {n} multi-kills', stat: 'multi', base: 5, pay: 1.5 },
   { id: 'jump', text: 'Get {n} jump-shot kills', stat: 'jump', base: 5, pay: 1.7 },
+  { id: 'rival', text: 'Kill {n} rival cheaters', stat: 'rival', base: 2, pay: 2.5, fixed: true, req: () => Save.data.maps.court },
   { id: 'style', text: 'Score {n} style points in one match', stat: 'style', base: 400, pay: 1.4, max: true },
   { id: 'streak', text: 'Reach a {n}-kill streak in one match', stat: 'streak', base: 8, pay: 1.8, max: true },
   { id: 'wins', text: 'Win {n} matches', stat: 'win', base: 2, pay: 3 },
@@ -1667,6 +1961,11 @@ const RANK_XP = RANKS.map((_, i) => i === 0 ? 0 : Math.round(60 * Math.pow(1.62,
 /* ---------------- achievements ---------------- */
 const ACH = (id, name, desc, salt, test) => ({ id, name, desc, salt, test });
 const ACHIEVEMENTS = [
+  ACH('owner', 'Untouchable', 'Buy Server Owner. BotGuard works for you now.', 100, () => !!Save.data.owned.sp6),
+  ACH('rival10', 'Takes One To Know One', 'Kill 10 rival cheaters.', 30, s => (s.rivals || 0) >= 10),
+  ACH('wave', 'Survived The Wave', 'Get hit by a BotGuard ban wave.', 15, s => (s.waves || 0) >= 1),
+  ACH('pass25', 'Halfway There', 'Reach tier 25 of the Bandit Pass.', 30, s => Math.floor((s.passXp || 0) / PASS_XP) >= 25),
+  ACH('pass50', 'Pass Completed', 'Reach tier 50 of the Bandit Pass.', 80, s => Math.floor((s.passXp || 0) / PASS_XP) >= 50),
   ACH('jump25', 'Frequent Flyer', 'Get 25 jump-shot kills.', 20, s => (s.jumpKills || 0) >= 25),
   ACH('noscope', 'Who Needs A Scope', 'Get 10 no-scope kills with the LDR-50.', 25, s => (s.noScopes || 0) >= 10),
   ACH('stylish', 'Totally Stylish', 'Reach the top style rank in a match.', 40, s => (s.topStyleRank || 0) >= 6),
@@ -1713,6 +2012,29 @@ const ACHIEVEMENTS = [
   ACH('rank', 'Admin Material', 'Reach the Admin Material rank.', 60, s => (s.xp || 0) >= RANK_XP[15]),
 ];
 
+/* ---------------- gun attachments (bought with loader parts from rival cheaters, or credits) ---------------- */
+const ATTACHMENTS = [
+  { id: 'reddot', slot: 'optic', name: 'Red Dot', parts: 2, desc: 'Aiming zooms a little more and tightens spread by another 15%.' },
+  { id: 'holo', slot: 'optic', name: 'Holo Sight', parts: 2, desc: 'Aim down sights 50% faster.' },
+  { id: 'suppressor', slot: 'muzzle', name: 'Suppressor', parts: 3, desc: 'Kills with this gun raise BotGuard detection 30% less. −10% damage.' },
+  { id: 'comp', slot: 'muzzle', name: 'Compensator', parts: 3, desc: '−40% recoil.' },
+  { id: 'extmag', slot: 'mag', name: 'Extended Mag', parts: 2, desc: '+40% magazine size.' },
+  { id: 'fastmag', slot: 'mag', name: 'Fast Mag', parts: 2, desc: 'Reload 35% faster.' },
+];
+const ATT_BY_ID = Object.fromEntries(ATTACHMENTS.map(a => [a.id, a]));
+const ATT_SLOTS = [['optic', 'Optic'], ['muzzle', 'Muzzle'], ['mag', 'Magazine']];
+const ATT_CR_PER_PART = 3000;
+
+/* ---------------- Bandit Pass: 50 tiers on the XP you already earn ---------------- */
+const PASS_XP = 150, PASS_TIERS = 50;
+const PASS_COSMETICS = [['skin', 'p_raccoon'], ['xhair', 'star'], ['skin', 'p_static'], ['killfx', 'glitchfx'], ['skin', 'p_sunset'],
+  ['xhair', 'ringx'], ['skin', 'p_toxic'], ['killfx', 'smoke'], ['xhair', 'hex'], ['skin', 'p_galaxy']];
+function passReward(i) {
+  if (i % 5 === 0) { const [kind, id] = PASS_COSMETICS[i / 5 - 1]; return { kind, id }; }
+  if (i % 5 === 2 || i % 5 === 4) return { kind: 'parts', n: i > 25 ? 2 : 1 };
+  return i % 2 ? { kind: 'salt', n: 15 + i * 2 } : { kind: 'cr', n: 10 + i };
+}
+
 /* ---------- save.js ---------- */
 'use strict';
 /* =========================================================================
@@ -1738,7 +2060,7 @@ const Save = {
       },
       settings: { name: 'legit_player', sens: 1, fov: 74, vol: 0.7, quality: 1, dmgNums: true, shake: true, fps: false, invert: false },
       flags: { intro: false, firstMatch: false, autoQueue: true, banditHint: false },
-      contracts: [], ach: {}, rankSeen: 0, det: 0,
+      contracts: [], ach: {}, rankSeen: 0, det: 0, wave: 0, parts: 0, att: {}, attOwned: {}, passClaimed: 0,
     };
   },
   isObj(o) { return o && typeof o === 'object' && !Array.isArray(o); },
@@ -1813,6 +2135,29 @@ const Shop = {
     if (!m || Save.data.maps[id] || !this.spend(m.unlock)) return false;
     Save.data.maps[id] = true; Save.save(); return true;
   },
+  // gun attachments: owned per gun, one equipped per slot
+  attOf(wid) {
+    const a = (Save.data.att || {})[wid] || {}, o = {};
+    for (const [slot] of ATT_SLOTS) if (a[slot]) o[a[slot]] = true;
+    return o;
+  },
+  attOwned(wid, aid) { return !!(Save.data.attOwned || {})[wid + ':' + aid]; },
+  buyAtt(wid, aid, pay) {
+    const a = ATT_BY_ID[aid], D = Save.data;
+    if (!a || !D.weapons[wid] || this.attOwned(wid, aid)) return false;
+    if (pay === 'parts') { if ((D.parts || 0) < a.parts) return false; D.parts -= a.parts; }
+    else if (!this.spend(a.parts * ATT_CR_PER_PART)) return false;
+    D.attOwned[wid + ':' + aid] = true;
+    this.equipAtt(wid, aid, true);
+    Save.save(); return true;
+  },
+  equipAtt(wid, aid, on) {
+    const a = ATT_BY_ID[aid], D = Save.data;
+    if (!a || !this.attOwned(wid, aid)) return;
+    const cur = D.att[wid] || (D.att[wid] = {});
+    cur[a.slot] = (on === undefined ? cur[a.slot] !== aid : on) ? aid : null;
+    Save.save();
+  },
   modeOwned(id) { return id === 'ffa' || !!Save.data.modes[id]; },
   nextMode() { return MODES.find(m => !this.modeOwned(m.id)); },
   buyMode(id) {
@@ -1833,7 +2178,7 @@ const Shop = {
     const table = kind === 'skin' ? SKINS : kind === 'xhair' ? XHAIRS : KILLFX;
     const bag = kind === 'skin' ? 'skins' : kind === 'xhair' ? 'xhairs' : 'killfxs';
     const item = table.find(i => i.id === id);
-    if (!item || Save.data[bag][id] || !this.spendSalt(item.cost)) return false;
+    if (!item || item.pass || Save.data[bag][id] || !this.spendSalt(item.cost)) return false;
     Save.data[bag][id] = true; Save.save(); return true;
   },
   panic: false,
@@ -1892,9 +2237,25 @@ const Shop = {
     S.chips = a('in1'); S.chipRange = a('in2') ? 10 : 1.8; S.interest = a('in3'); S.sponsor = a('in4'); S.insider = a('in5');
     // GHOSTWARE
     S.scanMul = (a('gh1') ? 0.7 : 1) * (a('gh6') ? 0.6 : 1) * (a('gh7') ? 0 : 1); S.humanizer = a('gh2'); S.kernel = a('gh3');
-    S.panicKey = a('gh4'); S.streamProof = a('gh5'); S.coolMul = a('gh6') ? 2 : 1;
+    S.panicKey = a('gh4'); S.streamProof = a('gh5'); S.coolMul = a('gh6') ? 2 : 1; S.ring = a('gh7');
     // SPOOFER
-    S.shredder = a('sp1'); S.bribe = a('sp2'); S.hwid = a('sp3'); S.alt = a('sp4'); S.appeal = a('sp5');
+    S.shredder = a('sp1'); S.bribe = a('sp2'); S.hwid = a('sp3'); S.alt = a('sp4'); S.appeal = a('sp5'); S.owner = a('sp6');
+    // second-wave upgrades declare their effects as data (u.fx): multiply, add or set a stat
+    Object.assign(S, {
+      snapDet: 1, wallDet: 1, ambushBonus: 0, crit: 0, hbHeadX: 1, airSpread: 1, adsFast: 1, jump: 1, blinkCD: 1, airAccel: 1,
+      lifeOnKill: 0, respawn: 1, winMul: 1, stylePay: 1, freezeCD: 1, uavTime: 1, careMul: 1, orbitalCD: 1, strikeR: 1, kickCD: 1,
+      bountyAdd: 0, clipMul: 1, vampAdd: 0, exMul: 1, chainN: 2, slowAdd: 0, rewinds: 1, thiefCap: 60, slowCDMul: 1, chipMul: 1,
+      interestCap: 1, interestRate: 0.02, contractMul: 1, partsAdd: 0, coolAdd: 0, reportMul: 1, activeMul: 1, waveMul: 1,
+      kickPenalty: 0.5, fineMul: 1, adminTime: 1, payroll: false,
+    });
+    for (const u of UPGRADES) {
+      if (!u.fx || !a(u.id)) continue;
+      for (const k in u.fx.mul || {}) S[k] = (S[k] == null ? 1 : S[k]) * u.fx.mul[k];
+      for (const k in u.fx.add || {}) S[k] = (S[k] || 0) + u.fx.add[k];
+      for (const k in u.fx.set || {}) S[k] = u.fx.set[k];
+    }
+    S.hbHead = Math.max(S.hbBody, S.headVisual) * S.hbHeadX;
+    S.aimFov = Math.min(S.aimFov, 180 * DEG);
     S.risk = this.riskOf();
     this.S = S;
     return S;
@@ -3057,6 +3418,15 @@ const GUNS = {
     ],
     muzzle: [0, 0.05, -0.55], left: [-0.005, -0.005, -0.28],
   },
+  burst: {
+    parts: [
+      [0, 0.04, -0.06, 0.052, 0.07, 0.3, 0], [0, 0.045, -0.29, 0.046, 0.05, 0.18, 1], [0, 0.05, -0.43, 0.022, 0.022, 0.12, 2],
+      [0, 0.05, -0.5, 0.034, 0.034, 0.03, 2], [0, -0.06, -0.06, 0.034, 0.12, 0.05, 1, 0.12], [0, -0.05, 0.06, 0.034, 0.1, 0.04, 1, -0.25],
+      [0, 0.03, 0.21, 0.044, 0.085, 0.18, 0], [0, 0.088, -0.1, 0.03, 0.012, 0.26, 2], [0, 0.104, -0.04, 0.026, 0.024, 0.05, 2],
+      [0, 0.104, -0.068, 0.02, 0.02, 0.006, 3], [0.03, 0.04, -0.12, 0.008, 0.03, 0.12, 3],
+    ],
+    muzzle: [0, 0.05, -0.52], left: [-0.005, -0.005, -0.27],
+  },
   sniper: {
     parts: [
       [0, 0.03, -0.05, 0.05, 0.07, 0.4, 0], [0, 0.04, -0.5, 0.026, 0.026, 0.55, 2], [0, 0.04, -0.79, 0.042, 0.042, 0.06, 2],
@@ -3183,6 +3553,21 @@ const Models = {
       }
       GFX.push(B, m, p[3], p[4], p[5], c[0], c[1], c[2], 1, pat, e, spec, sec);
     }
+    // attachments
+    const at = o.att;
+    if (at) {
+      const mz = G.muzzle;
+      if (at.suppressor) { M4.translate(m, base, mz[0], mz[1], mz[2] - 0.08); GFX.push(B, m, 0.046, 0.046, 0.17, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.5, 0); }
+      if (at.comp) { M4.translate(m, base, mz[0], mz[1], mz[2] - 0.025); GFX.push(B, m, 0.052, 0.042, 0.05, COL_LIGHT[0], COL_LIGHT[1], COL_LIGHT[2], 1, 0, 0, 0.9, 0); }
+      const sp = G.parts.find(q => q[6] === 3);
+      if (sp && (at.reddot || at.holo)) {
+        M4.translate(m, base, sp[0], sp[1] - 0.016, sp[2] + 0.02); GFX.push(B, m, 0.05, 0.016, 0.06, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.5, 0);
+        M4.translate(m, base, sp[0], sp[1] + 0.004, sp[2] + 0.04); GFX.push(B, m, 0.05, 0.03, 0.006, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.5, 0);
+        const c = at.reddot ? [1, 0.2, 0.2] : [0.3, 0.9, 1];
+        M4.translate(m, base, sp[0], sp[1], sp[2] - 0.004); GFX.push(B, m, 0.012, 0.012, 0.004, c[0], c[1], c[2], 1, 0, 1, 0, 0);
+      }
+      if (at.extmag) { M4.translate(m, base, 0, -0.07, mz[2] * 0.25); GFX.push(B, m, 0.03, 0.09, 0.05, COL_DARK[0], COL_DARK[1], COL_DARK[2], 1, 0, 0, 0.4, 0); }
+    }
     if (o.hands) {
       // right hand + forearm
       M4.translate(m, base, 0.0, -0.045, 0.03); M4.rotX(m, m, -0.28);
@@ -3287,7 +3672,7 @@ const Showroom = {
       M4.ident(m); M4.translate(m, m, 0, 1.25 + Math.sin(t * 1.4) * 0.05, 0); M4.rotY(m, m, t * 0.6); M4.rotZ(m, m, 0.12);
       const s = 3.2;
       for (let i = 0; i < 12; i++) if (i % 4 !== 3) m[i] *= s;
-      Models.gun(B, m, opt.weapon, opt.skin, { sight: opt.sight, hands: false });
+      Models.gun(B, m, opt.weapon, opt.skin, { sight: opt.sight, hands: false, att: Shop.attOf(opt.weapon) });
       Models.shadow(GFX.b.trans, 0, 0.23, 0, 1.4);
     }
   },
@@ -3387,7 +3772,7 @@ const Chat = {
   say(bot, text, saltTier) {
     const S = Shop.S;
     const salt = SALT_PER_TIER[U.clamp(saltTier || 0, 0, 4)] * S.salt;
-    this.push({ name: bot.name, color: bot.colHex, text, kind: 'bot', salt });
+    this.push({ name: bot.cheater ? bot.name + ' [CHEATER]' : bot.name, color: bot.colHex, text, kind: 'bot', salt });
     bot.bubble = text; bot.bubbleT = 3.2;
     this.msgs++;
     if (salt > 0) {
@@ -3655,7 +4040,7 @@ const Match = {
     }
     const win = !early && won && !AC.banned && !AC.kicked;
     if (win) {
-      const bonus = this.def.cr * (this.mode.win || 5) * S.cr * (S.sponsor ? 3 : 1);
+      const bonus = this.def.cr * (this.mode.win || 5) * S.cr * (S.sponsor ? 3 : 1) * S.winMul;
       this.earn.win = bonus; this.earn.total += bonus;
       Save.data.credits += bonus;
     }
@@ -3688,11 +4073,15 @@ const Match = {
     HUD.exitMatch();
     Game.mode = 'hub';
     Hub.show();
+    const wave = AC.rollWave();
+    if (wave) Hub.showWave(wave);
   },
   playAgain(auto) {
     const id = this.def.id;
     HUD.hideSummary();
+    const wave = AC.rollWave();
     this.start(id, { auto: !!auto, mode: this.mode.id });
+    if (wave) AC.announceWave(wave);
   },
 
   /* ---------------- factories ---------------- */
@@ -3726,7 +4115,7 @@ const Match = {
     const c = [World.W * CS / 2, 0, World.H * CS / 2];
     return V.yawOf([c[0] - pos[0], 0, c[2] - pos[2]]);
   },
-  magSize(w) { return Math.max(1, Math.round(w.mag * Shop.S.mag)); },
+  magSize(w) { return Math.max(1, Math.round(w.mag * Shop.S.mag * (Shop.attOf(w.id).extmag ? 1.4 : 1))); },
   weapon() { return WEAPON_BY_ID[this.p.weapon] || WEAPONS[0]; },
 
   /* ---------------- spawning ---------------- */
@@ -3915,7 +4304,7 @@ const Match = {
     const wl = Math.hypot(wx, wz);
     if (wl > 1) { wx /= wl; wz /= wl; }
     // aiming down sights eases in and slows you down a bit
-    p.adsT = U.damp(p.adsT || 0, p.ads ? 1 : 0, 14, dt);
+    p.adsT = U.damp(p.adsT || 0, p.ads ? 1 : 0, (Shop.attOf(p.weapon).holo ? 21 : 14) * S.adsFast, dt);
     const maxSpd = PLAYER_SPEED * S.speed * (p.scoped ? 0.55 : 1) * (1 - 0.35 * p.adsT);
     // without Bunny Hop, holding Space doesn't chain jumps: each jump needs its own press
     // (buffered briefly so a press just before landing still counts)
@@ -3925,7 +4314,7 @@ const Match = {
       p.groundT += dt;
       if (wantJump) {
         p.jumpBuf = 0;
-        p.vel[1] = JUMP_V;
+        p.vel[1] = JUMP_V * S.jump;
         if (S.bhop) {
           p.hop = Math.min(p.hop + 0.1, 0.7);
           const hs = Math.hypot(p.vel[0], p.vel[2]);
@@ -3949,11 +4338,11 @@ const Match = {
       const cur = Math.hypot(p.vel[0], p.vel[2]);
       // only Bunny Hop lets you keep speed above a normal run in the air
       const cap = S.bhop ? Math.max(cur, maxSpd * (1 + p.hop)) : maxSpd;
-      p.vel[0] += wx * AIR_ACCEL * dt; p.vel[2] += wz * AIR_ACCEL * dt;
+      p.vel[0] += wx * AIR_ACCEL * S.airAccel * dt; p.vel[2] += wz * AIR_ACCEL * S.airAccel * dt;
       const n = Math.hypot(p.vel[0], p.vel[2]);
       if (n > cap) { p.vel[0] *= cap / n; p.vel[2] *= cap / n; }
       if (jumpPress && p.airJumps > 0) {
-        p.airJumps--; p.vel[1] = JUMP_V * 0.92; SFX.jump();
+        p.airJumps--; p.vel[1] = JUMP_V * 0.92 * S.jump; SFX.jump();
         for (let i = 0; i < 6; i++) this.addPart(p.pos[0], p.pos[1] + 0.1, p.pos[2], U.rand(-2, 2), U.rand(0, 1), U.rand(-2, 2), 0.08, [0.8, 0.9, 1], 0.35, 2, 0.8, 0);
       }
     }
@@ -3972,7 +4361,7 @@ const Match = {
     p.landT = p.onGround ? Math.max(0, (p.landT || 0) - dt) : 0.18;
     const moveK = U.clamp(hs / PLAYER_SPEED, 0, 2) * 0.042;
     const airK = p.onGround ? 0.06 * (p.landT / 0.18) : 0.1 + 0.05 * U.clamp(1 - p.airT / 0.4, 0, 1);
-    p.moveSpread = (moveK + airK) * S.spread * 0.5;
+    p.moveSpread = (moveK + airK) * S.spread * 0.5 * S.airSpread;
     p.strafeRoll = U.damp(p.strafeRoll, -sr * 0.018, 8, dt);
     V.set(p.eye, p.pos[0], p.pos[1] + EYE_H, p.pos[2]);
     // "zero skill": the crosshair wanders until you buy steady hands
@@ -4117,7 +4506,7 @@ const Match = {
     const typing = Chat.typing;
     if (!typing && !this.afk) {
       if (Input.pressed.KeyR) this.startReload();
-      for (let i = 0; i < WEAPONS.length; i++) if (Input.pressed['Digit' + (i + 1)]) this.switchWeapon(WEAPONS[i].id);
+      for (let i = 0; i < WEAPONS.length; i++) if (Input.pressed['Digit' + ((i + 1) % 10)]) this.switchWeapon(WEAPONS[i].id);
       if (Input.wheel) this.cycleWeapon(Input.wheel > 0 ? 1 : -1);
       if (Input.pressed.KeyQ) this.doFreeze();
       if (Input.pressed.KeyE) this.doBlink(null);
@@ -4139,7 +4528,15 @@ const Match = {
     if (!held && p.clickBuf > 0 && !this.afk && !typing) want = true;
     // tactical reload: top up whenever nothing is in sight
     if (S.tacReload && !want && !trig && p.reloadT <= 0 && p.ammo[w.id] < this.magSize(w) && !this.aimTarget && p.fireT < -0.25) this.startReload();
-    if (want && p.fireT <= 0 && p.reloadT <= 0 && p.switchT <= 0) {
+    // burst guns fire the rest of their burst on their own
+    if (p.burstLeft > 0) {
+      p.burstT -= dt;
+      if (p.burstT <= 0) {
+        if (p.reloadT <= 0 && p.switchT <= 0 && (p.ammo[w.id] > 0 || S.infAmmo)) { p.burstLeft--; p.burstT = w.burstGap || 0.07; this.fire(w, true); }
+        else p.burstLeft = 0;
+      }
+    }
+    if (want && p.fireT <= 0 && p.reloadT <= 0 && p.switchT <= 0 && !(p.burstLeft > 0)) {
       if (p.ammo[w.id] > 0 || S.infAmmo) this.fire(w);
       else this.startReload();
     }
@@ -4147,6 +4544,7 @@ const Match = {
   switchWeapon(id) {
     const p = this.p;
     if (!Save.data.weapons[id] || p.weapon === id || this.mode.id === 'gungame') return;
+    p.burstLeft = 0;
     p.weapon = id; p.switchT = 0.35 * (Shop.S.swapMul || 1); p.lastSwitchT = this.clock; p.reloadT = 0; p.scoped = false; p.fireT = Math.max(p.fireT, 0);
     if (p.ammo[id] == null) p.ammo[id] = this.magSize(WEAPON_BY_ID[id]);
     SFX.ui();
@@ -4160,19 +4558,21 @@ const Match = {
   startReload(extra) {
     const p = this.p, w = this.weapon(), S = Shop.S;
     if (p.reloadT > 0 || S.infAmmo || p.ammo[w.id] >= this.magSize(w)) return;
-    p.reloadMax = p.reloadT = w.reload * S.reload + (extra || 0);
+    p.reloadMax = p.reloadT = w.reload * S.reload * (Shop.attOf(w.id).fastmag ? 0.65 : 1) + (extra || 0);
     p.scoped = false;
     SFX.reload();
   },
-  fire(w) {
+  fire(w, inBurst) {
     const p = this.p, S = Shop.S;
     p.fireT = w.rate / S.fireRate;
+    if (w.burst && !inBurst) { p.burstLeft = w.burst - 1; p.burstT = w.burstGap || 0.07; }
     p.clickBuf = 0;
     if (!S.infAmmo) p.ammo[w.id]--;
     const muzzle = this.muzzleWorld([0, 0, 0]);
     const shots = S.doubleTap ? 2 : 1;
     for (let s = 0; s < shots; s++) for (let k = 0; k < w.pellets; k++) this.shootRay(w, muzzle);
-    p.recoil += w.recoil * S.recoil * (p.scoped ? 0.5 : 1) * (1 - 0.3 * (p.adsT || 0));
+    const att = Shop.attOf(w.id);
+    p.recoil += w.recoil * S.recoil * (p.scoped ? 0.5 : 1) * (1 - 0.3 * (p.adsT || 0)) * (att.comp ? 0.6 : 1);
     p.recoilYaw += (Math.random() - 0.5) * w.recoil * 0.6 * S.recoil;
     p.bloom = Math.min(0.06, p.bloom + w.spread * 0.3 * S.spread);
     p.kick = 1;
@@ -4186,8 +4586,8 @@ const Match = {
   },
   shootRay(w, muzzle) {
     const p = this.p, S = Shop.S;
-    const ads = p.adsT || 0;
-    let spread = (p.scoped ? (w.scopeSpread || 0) : w.spread * (1 - (w.pellets > 1 ? 0.2 : 0.55) * ads)) * S.spread
+    const ads = p.adsT || 0, att = Shop.attOf(w.id);
+    let spread = (p.scoped ? (w.scopeSpread || 0) : w.spread * (1 - (w.pellets > 1 ? 0.2 : 0.55) * ads) * (att.reddot ? 1 - 0.15 * ads : 1)) * S.spread
       + p.moveSpread * (1 - 0.4 * ads) + p.bloom * (S.spread > 0 ? 1 : 0) * (1 - 0.3 * ads);
     if (w.pellets > 1) spread = Math.max(spread, w.spread * 0.25);
     let dir = V.cone([0, 0, 0], p.aimDir, spread);
@@ -4205,11 +4605,13 @@ const Match = {
     }
     for (const h of res.hits) {
       const hp = V.madd([0, 0, 0], p.eye, dir, h.t);
-      const dmg = w.dmg * (h.head ? w.head * S.hsMul : 1) * S.dmgMul;
+      const crit = S.crit > 0 && Math.random() < S.crit;
+      const dmg = w.dmg * (h.head ? w.head * S.hsMul : 1) * S.dmgMul * (att.suppressor ? 0.9 : 1) * (crit ? 2 : 1);
+      if (crit) this.addFloater([hp[0], hp[1] + 0.4, hp[2]], 'CRIT', '#ff9a3c', 0.9);
       this.sparks(hp, h.bot.col.acc, 5);
       this.damageBot(h.bot, dmg, h.head, { wall: h.throughWall, silent, magic, dir, hitPos: hp });
-      if (S.vamp) p.hp = Math.min(100, p.hp + 3);
-      if (S.exRounds && !w.splash) Extras.splash(hp, { r: 2.5, dmg: 40 }, h.bot, true);
+      if (S.vamp || S.vampAdd) p.hp = Math.min(100, p.hp + (S.vamp ? 3 : 0) + S.vampAdd);
+      if (S.exRounds && !w.splash) Extras.splash(hp, { r: 2.5 * Math.sqrt(S.exMul), dmg: 40 * S.exMul }, h.bot, true);
     }
     if (S.ricochet && !res.hits.length && res.wall && res.wallReached && !w.splash) Extras.ricochet(V.madd([0, 0, 0], res.wallPt, dir, -0.2), w);
     if (res.wall && res.wallReached) {
@@ -4309,6 +4711,7 @@ const Match = {
     if (killer === 'player') {
       const p = this.p, S = Shop.S;
       p.kills++; p.streak++;
+      if (S.lifeOnKill && p.alive) p.hp = Math.min(100, p.hp + S.lifeOnKill);
       this.st.kills++;
       if (!this.mode.ffa) this.score.blue++;
       if (info.head) this.st.hs++;
@@ -4321,6 +4724,7 @@ const Match = {
         wall: !!info.wall, snap: false, spin: false, multi: p.multi, frozen: this.freezeT > 0,
         blink: this.clock - p.lastBlinkT < 1.5, speed: Math.hypot(p.vel[0], p.vel[2]) > 8.5, long: V.dist(p.pos, b.pos) > 45,
         ambush: S.ambush && this.clock - b.sawPlayerT > 2.5,
+        suppressed: !info.strike && !info.splash && !info.popper && !info.reflect && !info.chain && !!Shop.attOf(this.weapon().id).suppressor,
       };
       if (!info.popper && !info.reflect) {
         ctx.snap = this.recentTurn(0.15) > 35 * DEG;
@@ -4331,7 +4735,7 @@ const Match = {
       let bonus = 0;
       if (info.head) bonus += S.hsBonus;
       if (S.streak) bonus += Math.min(2, (p.streak - 1) * 0.1);
-      if (ctx.ambush) bonus += 0.6;
+      if (ctx.ambush) bonus += 0.6 + S.ambushBonus;
       // the gun that got the kill pays its small multiplier; strikes, lasers, chains and confetti don't
       const killGun = info.splash ? WEAPON_BY_ID.launcher : (info.strike || info.chain || info.popper || info.reflect || info.nuke) ? null : this.weapon();
       const xg = killGun ? killGun.pay : 1;
@@ -4396,9 +4800,10 @@ const Match = {
     const p = this.p;
     const clutch = this.mode.id === 'clutch';
     const prevStreak = p.streak;
-    p.alive = false; p.hp = 0; p.respawnT = clutch ? 99 : 2.6; p.deaths++; this.st.deaths++; p.streak = 0; p.multi = 0;
+    p.alive = false; p.hp = 0; p.respawnT = clutch ? 99 : 2.6 * Shop.S.respawn; p.deaths++; this.st.deaths++; p.streak = 0; p.multi = 0;
     Extras.onPlayerDeath(prevStreak);
     Style.onPlayerDeath(bot);
+    if (bot && bot.cheater && U.chance(0.7)) Chat.queue(bot, U.pick(CHAT.rivalTaunt), U.rand(0.4, 1), 0);
     p.scoped = false; p.reloadT = 0;
     this.deathCam = bot || null;
     if (!this.mode.ffa) this.score.red++;
@@ -4423,7 +4828,7 @@ const Match = {
     const p = this.p, S = Shop.S;
     if (!S.freeze) return;
     if (p.freezeCD > 0) { SFX.deny(); return; }
-    this.freezeT = 4; p.freezeCD = 18;
+    this.freezeT = 4; p.freezeCD = 18 * S.freezeCD;
     SFX.freeze();
     HUD.callout('FREEZE FRAME', 'multi');
     AC.onAbility('freeze');
@@ -4456,7 +4861,7 @@ const Match = {
     V.copy(p.pos, dest); V.set(p.vel, 0, 0, 0);
     p.yaw = V.yawOf(V.sub([0, 0, 0], t.pos, p.pos)); p.pitch = -0.05;
     for (let i = 0; i < 14; i++) this.addPart(dest[0], dest[1] + U.rand(0.2, 1.8), dest[2], U.rand(-1.5, 1.5), U.rand(-0.5, 1.5), U.rand(-1.5, 1.5), 0.08, [0.7, 0.4, 1], 0.5, 0, 1, 0);
-    p.blinkCD = 3; p.lastBlinkT = this.clock;
+    p.blinkCD = 3 * S.blinkCD; p.lastBlinkT = this.clock;
     this.fx.fovKick = 0.25;
     SFX.blink();
     AC.onAbility('blink');
@@ -4558,10 +4963,10 @@ const Match = {
     let best = null;
     for (const c of cands) {
       const tp = [c.t.pos[0], c.t.pos[1] + 1.2, c.t.pos[2]];
-      if (World.los(eye, tp)) { best = c; break; }
+      if (World.los(eye, tp) || (b.cheater && c.isP && V.dist(eye, tp) < 45)) { best = c; break; }
     }
     if (best) {
-      if (best.t !== b.target) { b.seeT = 0; b.react = this.def.bot.react * U.rand(0.8, 1.3); }
+      if (best.t !== b.target) { b.seeT = 0; b.react = this.def.bot.react * (b.cheater ? 0.45 : U.rand(0.8, 1.3)); }
       b.target = best.t; b.canSee = true; b.lostT = 0;
       b.lastSeen = [best.t.pos[0], 0, best.t.pos[2]];
       if (best.isP) {
@@ -4732,6 +5137,10 @@ const Match = {
     } else if (kind === 'banned') {
       this.addFloater([x, y + 2.3, z], 'BANNED', '#ff3d4d', 1.6, true);
       for (let i = 0; i < 30; i++) this.addPart(x, y + 1.2, z, U.rand(-3, 3), U.rand(1, 5), U.rand(-3, 3), 0.1, [1, 0.2, 0.25], U.rand(0.8, 1.6), 6, 0.8, 0);
+    } else if (kind === 'glitchfx') {
+      for (let i = 0; i < 40; i++) this.addPart(x + U.rand(-0.3, 0.3), y + U.rand(0.1, 1.9), z + U.rand(-0.3, 0.3), U.rand(-5, 5), U.rand(-0.3, 0.3), U.rand(-5, 5) * 0.2, 0.11, i % 2 ? [0.2, 1, 1] : [1, 0.2, 0.9], U.rand(0.4, 0.9), 0, 1, 0);
+    } else if (kind === 'smoke') {
+      for (let i = 0; i < 26; i++) this.addPart(x + U.rand(-0.4, 0.4), y + U.rand(0.3, 1.8), z + U.rand(-0.4, 0.4), U.rand(-0.5, 0.5), U.rand(0.3, 1.2), U.rand(-0.5, 0.5), U.rand(0.25, 0.45), [0.55, 0.57, 0.6], U.rand(1.4, 2.4), -0.6, 0, 0);
     } else if (kind === 'fireworks') {
       for (let i = 0; i < 60; i++) this.addPart(x, y + 1.5, z, U.rand(-5, 5), U.rand(5, 12), U.rand(-5, 5), 0.06, U.hsv(Math.random(), 0.8, 1), U.rand(0.8, 1.5), 7, 1, 0);
     }
@@ -4778,7 +5187,7 @@ const Match = {
     const p = this.p, st = Save.data.settings;
     let fov = st.fov * DEG;
     if (p.scoped) fov = 22 * DEG;
-    else fov *= 1 - 0.22 * (p.adsT || 0);
+    else fov *= 1 - (Shop.attOf(p.weapon).reddot ? 0.3 : 0.22) * (p.adsT || 0);
     fov += this.fx.fovKick;
     let eye = p.eye.slice(), yaw = p.yaw + p.recoilYaw * 0.6, pitch = p.pitch + p.recoil, roll = p.strafeRoll * 0.5;
     if (!p.alive) {
@@ -4869,7 +5278,7 @@ const Match = {
     if (p.alive && !p.scoped && this.phase !== 'over') {
       const vm = this.viewModelMatrix(this.vmMat);
       const sight = U.hex(Save.data.xhair.color || '#7cffb2');
-      Models.gun(B.view, vm, p.weapon, Save.data.skinOf[p.weapon] || 'factory', { hands: true, sight, pump: p.pump });
+      Models.gun(B.view, vm, p.weapon, Save.data.skinOf[p.weapon] || 'factory', { hands: true, sight, pump: p.pump, att: Shop.attOf(p.weapon) });
       if (this.fx.muzzle > 0) {
         const G = GUNS[p.weapon] || GUNS.pistol, mz = G.muzzle;
         M4.translate(m, vm, mz[0], mz[1], mz[2] - 0.04);
@@ -4957,9 +5366,11 @@ const Extras = {
     M.ggIdx = 0;
     if (M.mode.id === 'gungame') this.setGun(0, true);
     if (M.mode.id === 'boss') this.makeBoss(M.bots[0]);
+    this.spawnRivals();
     if (S.ragebait) { Chat.sus = Math.max(Chat.sus, 40); Chat.peak = Math.max(Chat.peak, 40); }
     if (S.bounty) this.bountyT = 2.5;
     if (M.def.grav) Chat.queue(U.pick(M.bots), U.pick(CHAT.moon), U.rand(6, 10), 0);
+    if (M.def.chat) Chat.queue(U.pick(M.bots), U.pick(M.def.chat), U.rand(5, 9), 0);
   },
   update(dt) {
     const M = Match, S = Shop.S;
@@ -5010,7 +5421,8 @@ const Extras = {
   // extra credit multiplier for special kills (bounty, boss, nuke)
   killMult(b, info) {
     let k = 1;
-    if (b.bounty) k *= 5;
+    if (b.bounty) k *= 5 + Shop.S.bountyAdd;
+    if (b.cheater) k *= 6;
     if (b.boss) k *= 15;
     if (info.nuke) k *= 2;
     return k;
@@ -5030,8 +5442,9 @@ const Extras = {
       HUD.callout('BOUNTY CLAIMED', 'multi'); SFX.coin();
     }
     if (b.boss) this.bossDown(b);
-    if (S.chips && !b.boss) this.chips.push({ pos: [b.pos[0] + U.rand(-0.5, 0.5), 0, b.pos[2] + U.rand(-0.5, 0.5)], v: M.def.cr * 0.5 * S.cr, t: 12 });
-    if (S.timeThief && M.mode.id !== 'clutch' && this.timeAdded < 60) { M.time += 1; M.total += 1; this.timeAdded++; }
+    if (b.cheater) this.rivalDown(b);
+    if (S.chips && !b.boss) this.chips.push({ pos: [b.pos[0] + U.rand(-0.5, 0.5), 0, b.pos[2] + U.rand(-0.5, 0.5)], v: M.def.cr * 0.5 * S.cr * S.chipMul, t: 12 });
+    if (S.timeThief && M.mode.id !== 'clutch' && this.timeAdded < S.thiefCap) { M.time += 1; M.total += 1; this.timeAdded++; }
     if (S.chain && !info.chain) this.chainLightning(b);
     if (M.mode.id === 'gungame' && M.phase === 'play') this.gunUp();
     if (!this.inStrike) this.onStreak(p.streak);
@@ -5053,17 +5466,17 @@ const Extras = {
   onStreak(n) {
     const M = Match, S = Shop.S, p = M.p;
     if (S.recon && n % 6 === 3) {
-      this.uavT = 12; this.call('RECON DRONE ONLINE');
+      this.uavT = 12 * S.uavTime; this.call('RECON DRONE ONLINE');
     }
     if (S.carePkg && n % 5 === 0) {
       p.hp = 100;
-      const cash = M.def.cr * 4 * S.cr;
+      const cash = M.def.cr * 4 * S.cr * S.careMul;
       M.earn.streak += cash; M.earn.total += cash; Save.data.credits += cash;
       M.addFloater([p.pos[0], p.pos[1] + 2.4, p.pos[2]], '+' + U.fmt(cash) + ' CR', '#ffd23f', 1.3, true);
       this.call('CARE PACKAGE'); SFX.coin();
     }
     if (S.airstrike && n % 8 === 0) {
-      this.strikes.push({ pos: this.aimGround(80), r: 9, t: 1.1, kind: 'air' });
+      this.strikes.push({ pos: this.aimGround(80), r: 9 * S.strikeR, t: 1.1, kind: 'air' });
       AC.onAbility('airstrike');
       this.call('AIRSTRIKE INBOUND');
       this.react(CHAT.strike, 1.4);
@@ -5093,7 +5506,7 @@ const Extras = {
     const S = Shop.S;
     if (!S.orbital) return;
     if (this.orbitalCD > 0) { SFX.deny(); return; }
-    this.orbitalCD = 20;
+    this.orbitalCD = 20 * S.orbitalCD;
     this.strikes.push({ pos: this.aimGround(160), r: 6, t: 0.45, kind: 'laser' });
     HUD.callout('ORBITAL LASER', 'multi'); SFX.freeze();
     AC.onAbility('orbital');
@@ -5154,7 +5567,7 @@ const Extras = {
   chainLightning(src) {
     const M = Match;
     const near = M.bots.filter(b => b.alive && !b.gone && b.team !== 'blue' && b !== src && V.dist(b.pos, src.pos) < 14)
-      .sort((a, b) => V.dist(a.pos, src.pos) - V.dist(b.pos, src.pos)).slice(0, 2);
+      .sort((a, b) => V.dist(a.pos, src.pos) - V.dist(b.pos, src.pos)).slice(0, Shop.S.chainN);
     for (const b of near) {
       const a = M.chestPoint(src), c = M.chestPoint(b);
       M.addTracer(a, c, [0.6, 0.85, 1], 0.05, 0.25);
@@ -5179,7 +5592,7 @@ const Extras = {
     const S = Shop.S;
     if (!S.slowmo) return;
     if (this.slowCD > 0) { SFX.deny(); return; }
-    this.slowT = S.matrix ? 8 : 5; this.slowCD = (S.matrix ? 15 : 25) + this.slowT;
+    this.slowT = (S.matrix ? 8 : 5) + S.slowAdd; this.slowCD = (S.matrix ? 15 : 25) * S.slowCDMul + this.slowT;
     HUD.callout('BULLET TIME', 'multi'); SFX.freeze();
     AC.onAbility('slowmo');
     this.react(CHAT.freeze, 1);
@@ -5187,8 +5600,8 @@ const Extras = {
   botTime() { return this.slowT > 0 ? 0.3 : 1; },
   tryRewind() {
     const M = Match, p = M.p;
-    if (!Shop.S.rewind || this.rewindUsed || !this.hist.length) return false;
-    this.rewindUsed = true;
+    if (!Shop.S.rewind || (this.rewindUsed || 0) >= Shop.S.rewinds || !this.hist.length) return false;
+    this.rewindUsed = (this.rewindUsed || 0) + 1;
     const h = this.hist.find(x => M.clock - x.t <= 3.2) || this.hist[0];
     for (let i = 0; i < 14; i++) M.addPart(p.pos[0], p.pos[1] + U.rand(0.2, 1.8), p.pos[2], U.rand(-1.5, 1.5), U.rand(-0.5, 1.5), U.rand(-1.5, 1.5), 0.08, [0.65, 0.55, 1], 0.6, 0, 1, 0);
     V.copy(p.pos, h.pos); V.set(p.vel, 0, 0, 0);
@@ -5219,7 +5632,7 @@ const Extras = {
       b = pool.find(o => o.pers === 'salty') || U.pick(pool);
     }
     if (!b) { SFX.deny(); return; }
-    this.adminCD = 15;
+    this.adminCD = 15 * S.kickCD;
     if (b.alive) M.debris(b, null, true);
     b.alive = false; b.gone = true; b.rejoinT = U.rand(4, 7);
     if (b.bounty) { b.bounty = false; this.bounty = null; this.bountyT = 2; }
@@ -5246,6 +5659,75 @@ const Extras = {
   react(pool, delay) {
     const foes = Match.bots.filter(b => b.team !== 'blue' && !b.gone);
     if (foes.length) Chat.queue(U.pick(foes), U.pick(pool), delay + U.rand(0, 0.8), Math.max(2, Chat.tier));
+  },
+
+  /* ---------------- rival cheaters ---------------- */
+  spawnRivals() {
+    const M = Match;
+    const foes = M.bots.filter(b => b.team !== 'blue' && !b.boss);
+    if (foes.length < 5) return;
+    if (!U.chance(AC.det >= 50 ? 0.4 : 0.2)) return;
+    const n = foes.length >= 12 && U.chance(0.5) ? 2 : 1;
+    U.shuffle(foes.slice()).slice(0, n).forEach((b, i) => this.makeRival(b, 6 + i * 5));
+  },
+  makeRival(b, delay) {
+    b.cheater = true; b.accVar *= 1.6; b.prevAcc = b.col.acc; b.prevHex = b.colHex;
+    b.col.acc = U.hex('#b14dff'); b.colHex = '#b14dff';
+    const other = Match.bots.find(o => o !== b && o.team !== 'blue');
+    if (other) Chat.queue(other, U.pick(CHAT.rivalCall).replace('{n}', b.name), delay || 6, 1);
+  },
+  rivalDown(b) {
+    const M = Match, D = Save.data, s = D.stats;
+    const n = 1 + (U.chance(0.5) ? 1 : 0) + Shop.S.partsAdd;
+    D.parts = (D.parts || 0) + n; M.earn.parts = (M.earn.parts || 0) + n;
+    s.rivals = (s.rivals || 0) + 1;
+    this.track('rival', 1);
+    HUD.callout(`RIVAL CHEATER DOWN · +${n} LOADER PART${n > 1 ? 'S' : ''}`, 'multi'); SFX.coin();
+    Chat.queue(b, U.pick(CHAT.rivalDown), 0.4, 0);
+    // they log off and come back clean
+    b.cheater = false; b.accVar /= 1.6; b.col.acc = b.prevAcc || b.col.acc; b.colHex = b.prevHex || b.colHex;
+  },
+
+  /* ---------------- Bandit Pass ---------------- */
+  passInfo() {
+    const xp = Save.data.stats.passXp || 0, tier = Math.min(PASS_TIERS, Math.floor(xp / PASS_XP));
+    return { xp, tier, frac: tier >= PASS_TIERS ? 1 : (xp % PASS_XP) / PASS_XP, into: xp % PASS_XP };
+  },
+  addPassXp(n) {
+    const s = Save.data.stats;
+    s.passXp = (s.passXp || 0) + n;
+    this.checkPass();
+  },
+  checkPass() {
+    const D = Save.data, tier = this.passInfo().tier, msgs = [];
+    while ((D.passClaimed || 0) < tier) {
+      D.passClaimed = (D.passClaimed || 0) + 1;
+      msgs.push(`Bandit Pass tier ${D.passClaimed}: ${this.grantPass(D.passClaimed)}`);
+    }
+    if (!msgs.length) return;
+    // several tiers at once collapse into one line so they don't flood the screen
+    const shown = msgs.length > 2 ? [`Bandit Pass: +${msgs.length} tiers, now tier ${D.passClaimed}. See the Pass tab.`] : msgs;
+    this.notes.push(...shown);
+    if (Game.mode !== 'match') for (const m of shown) Hub.toast(m, 'good');
+  },
+  passLabel(r) {
+    if (r.kind === 'skin') return (SKIN_BY_ID[r.id] || {}).name + ' finish';
+    if (r.kind === 'xhair') return (XHAIRS.find(x => x.id === r.id) || {}).name + ' crosshair';
+    if (r.kind === 'killfx') return (KILLFX.find(x => x.id === r.id) || {}).name + ' kill effect';
+    if (r.kind === 'parts') return r.n + ' loader part' + (r.n > 1 ? 's' : '');
+    if (r.kind === 'salt') return r.n + ' salt';
+    return U.fmt(this.passCr(r.n)) + ' CR';
+  },
+  passCr(n) { return Math.round(Math.max(...MAPS.filter(m => Save.data.maps[m.id]).map(m => m.cr), 10) * n * Shop.smurfMult()); },
+  grantPass(i) {
+    const D = Save.data, r = passReward(i);
+    if (r.kind === 'skin') D.skins[r.id] = true;
+    else if (r.kind === 'xhair') D.xhairs[r.id] = true;
+    else if (r.kind === 'killfx') D.killfxs[r.id] = true;
+    else if (r.kind === 'parts') D.parts = (D.parts || 0) + r.n;
+    else if (r.kind === 'salt') D.salt += r.n;
+    else { const c = this.passCr(r.n); D.credits += c; D.stats.crEarned += c; }
+    return this.passLabel(r);
   },
 
   /* ---------------- Raid Boss ---------------- */
@@ -5295,11 +5777,11 @@ const Extras = {
   onMatchEnd(win, early) {
     const M = Match, S = Shop.S, s = Save.data.stats;
     if (S.clip && M.earn.salt > 0 && !early && !AC.banned) {
-      const c = M.earn.salt * M.def.cr;
+      const c = M.earn.salt * M.def.cr * S.clipMul;
       M.earn.clip = c; M.earn.total += c; Save.data.credits += c;
     }
     if (S.interest && !AC.banned) {
-      const c = Math.min(Math.max(0, Save.data.credits) * 0.02, M.def.cr * 20 * S.cr);
+      const c = Math.min(Math.max(0, Save.data.credits) * S.interestRate, M.def.cr * 20 * S.cr * S.interestCap);
       M.earn.interest = c; M.earn.total += c; Save.data.credits += c;
     }
     if (!early) {
@@ -5309,6 +5791,7 @@ const Extras = {
     const xp = Math.round(M.st.kills + M.st.hs * 0.5 + (win ? 30 : 0) + (early ? 0 : 10));
     M.earn.xp = xp;
     s.xp = (s.xp || 0) + xp;
+    this.addPassXp(xp);
   },
   // runs after finish() has folded this match into the career stats
   afterStats() { this.checkRank(); this.checkAch(); },
@@ -5353,11 +5836,12 @@ const Extras = {
   claim(i) {
     const D = Save.data, c = D.contracts[i];
     if (!c || !c.done) return false;
-    const cr = c.cr * (Shop.S.insider ? 2 : 1);
+    const cr = Math.round(c.cr * (Shop.S.insider ? 2 : 1) * Shop.S.contractMul);
     D.credits += cr; D.salt += c.salt;
     D.stats.crEarned += cr;
     D.stats.contracts = (D.stats.contracts || 0) + 1;
     D.stats.xp = (D.stats.xp || 0) + 40;
+    this.addPassXp(40);
     D.contracts[i] = this.rollContract(D.contracts.map(x => x.id));
     this.checkRank(); this.checkAch();
     Save.save();
@@ -5426,12 +5910,12 @@ const AC = {
   get det() { return Save.data.det || 0; },
   set det(v) { Save.data.det = U.clamp(v, 0, 100); },
   tierOf(d) { let t = 0; for (let i = 0; i < DET_TIERS.length; i++) if (d >= DET_TIERS[i].at) t = i; return t; },
-  tier() { return DET_TIERS[this.tierOf(this.det)]; },
+  tier() { return Shop.S && Shop.S.owner ? { name: 'SERVER OWNER', color: '#c084fc' } : DET_TIERS[this.tierOf(this.det)]; },
   interval() { return Shop.S.kernel ? 40 : 20; },
   scanGain() { return Shop.S.risk * 0.15 * Shop.S.scanMul; },
   threshold() {
     const tier = Math.max(0, MAPS.indexOf(Match.def));
-    return Math.round((18 + tier * 6) * (Shop.S.shredder ? 2 : 1));
+    return Math.round((18 + tier * 6) * (Shop.S.shredder ? 2 : 1) * Shop.S.reportMul);
   },
 
   /* ---------------- match hooks ---------------- */
@@ -5475,15 +5959,18 @@ const AC = {
     const watched = this.admin && !Shop.S.streamProof ? 2 : 1;
     n *= watched;
     if (this.admin) this.admin.gain += n;
+    // Server Owner: detection still shows, but it can't reach a ban
+    if (Shop.S.owner) { this.det = Math.min(99, this.det + n); return; }
     this.det = this.det + n;
     if (this.det >= 100) this.ban();
   },
   // obvious plays: Humanizer softens them
-  addActive(n) { this.add(n * (Shop.S.humanizer ? 0.5 : 1)); },
+  addActive(n) { this.add(n * (Shop.S.humanizer ? 0.5 : 1) * (Shop.S.ring ? 0.5 : 1) * Shop.S.activeMul); },
   onKill(ctx) {
-    const w = (ctx.wall ? 3 : 0) + (ctx.snap ? 2 : 0) + (ctx.spin ? 4 : 0) + (ctx.silent ? 2 : 0) + (ctx.magic ? 2 : 0)
+    const S = Shop.S;
+    const w = (ctx.wall ? 3 * S.wallDet : 0) + (ctx.snap ? 2 * S.snapDet : 0) + (ctx.spin ? 4 : 0) + (ctx.silent ? 2 : 0) + (ctx.magic ? 2 : 0)
       + (ctx.blink ? 2 : 0) + (ctx.speed ? 1 : 0) + (ctx.frozen ? 1 : 0) + (ctx.multi >= 3 ? 1 : 0);
-    if (w) this.addActive(w * 0.03);
+    if (w) this.addActive(w * 0.03 * (ctx.suppressed ? 0.7 : 1));
   },
   onAbility(kind) {
     const amt = { freeze: 4, blink: 1.5, orbital: 5, kick: 3, airstrike: 3, nuke: 15, slowmo: 3 }[kind] || 1;
@@ -5510,6 +5997,20 @@ const AC = {
     const M = Match, S = Shop.S, s = Save.data.stats;
     const name = U.pick(ADMIN_NAMES);
     this.visits++;
+    if (S.payroll) {
+      const pay = M.def.cr * 10 * S.cr;
+      M.earn.payroll = (M.earn.payroll || 0) + pay; M.earn.total += pay; Save.data.credits += pay;
+      HUD.callout(`ADMIN PAYROLL +${U.fmt(pay)} CR`, 'small');
+    }
+    if (S.owner) {
+      this.reportsAt = Chat.reports + this.threshold() * 3;
+      Chat.server(`${name} joined to review ${U.fmt(Chat.reports)} reports.`);
+      this.admin = { name, t: 0, gain: 0, talkT: 99 };
+      this.adminSay(U.pick(['oh. it is the owner. carry on', 'sorry boss, wrong server', 'nothing to see here everyone', 'closing all tickets. have a good one boss']));
+      this.admin = null;
+      Extras.react(CHAT.adminClean, 0.6);
+      return;
+    }
     // each visit makes the next one take more reports: admins get tired of this lobby
     this.reportsAt = Chat.reports + this.threshold() * (1 + this.visits);
     if (S.bribe && M.earn.total > 0) {
@@ -5524,7 +6025,7 @@ const AC = {
       HUD.callout(`ADMIN BRIBED -${U.fmt(fee)} CR`, 'small');
       return;
     }
-    this.admin = { name, t: 22, gain: 0, talkT: U.rand(5, 8) };
+    this.admin = { name, t: 22 * S.adminTime, gain: 0, talkT: U.rand(5, 8) };
     Chat.server(`${name} is now spectating ${Save.data.settings.name}.`);
     this.adminSay(U.pick(ADMIN_LINES.join));
     Extras.react(CHAT.adminCheer, 0.8);
@@ -5547,7 +6048,7 @@ const AC = {
   kick() {
     const M = Match, s = Save.data.stats;
     this.kicked = true;
-    const lost = Math.max(0, M.earn.total * 0.5);
+    const lost = Math.max(0, M.earn.total * Shop.S.kickPenalty);
     M.earn.forfeit += lost; M.earn.total -= lost; Save.data.credits -= lost;
     s.adminKicks = (s.adminKicks || 0) + 1;
     Chat.server(`${Save.data.settings.name} was kicked by ${this.admin ? this.admin.name : 'an admin'}.`);
@@ -5569,7 +6070,7 @@ const AC = {
     this.banned = true;
     const lost = Math.max(0, M.earn.total);
     M.earn.forfeit += lost; M.earn.total = 0; Save.data.credits -= lost;
-    const fine = S.hwid ? 0 : Math.max(0, Save.data.credits * 0.1);
+    const fine = S.hwid ? 0 : Math.max(0, Save.data.credits * 0.1 * S.fineMul);
     M.earn.fine = fine; Save.data.credits -= fine;
     this.det = S.alt ? 0 : 40;
     s.bans = (s.bans || 0) + 1;
@@ -5581,18 +6082,48 @@ const AC = {
     M.finish(false);
   },
 
+  /* ---------------- ban waves ---------------- */
+  waveChance() { return !Shop.S.owner && this.tierOf(this.det) >= 2 ? Math.min(0.5, (Save.data.wave || 0) / 400) : 0; },
+  // rolled between matches: BotGuard bans in batches, sometimes long after the fact
+  rollWave() {
+    const S = Shop.compute(), D = Save.data, s = D.stats;
+    const n = U.randi(800, 9999);
+    if (S.owner) return null;
+    if (!U.chance(this.waveChance())) {
+      if (this.tierOf(this.det) >= 2 && U.chance(0.3)) return { near: true, n, banned: U.randi(300, 4000) };
+      return null;
+    }
+    D.wave = 0;
+    if (S.appeal) { this.det = 60; Save.save(); return { appealed: true, n }; }
+    const fine = S.hwid ? 0 : Math.max(0, D.credits * 0.05 * S.fineMul);
+    D.credits -= fine;
+    this.det = S.alt ? 0 : 40;
+    s.bans = (s.bans || 0) + 1; s.waves = (s.waves || 0) + 1;
+    Save.save();
+    return { hit: true, n, fine };
+  },
+
+  // a wave rolled while auto-queueing shows up in the next match's chat instead of a popup
+  announceWave(w) {
+    if (w.hit) { Chat.server(`BotGuard ban wave #${w.n}: you were in it. −${U.fmt(w.fine)} CR, detection reset.`); HUD.callout('BAN WAVE', 'multi'); }
+    else if (w.appealed) Chat.server(`BotGuard ban wave #${w.n}: Appeal Bot got you out of it.`);
+    else if (w.near) Chat.server(`BotGuard ban wave #${w.n} banned ${U.fmt(w.banned)} accounts. You were not one of them. Yet.`);
+  },
+
   /* ---------------- after the match ---------------- */
   onMatchEnd(win) {
     const S = Shop.S, s = Save.data.stats;
     s.scans = (s.scans || 0) + 1;
+    // ban waves: detection you picked up and kept builds "taint" (Save.data.wave) that can get you banned later
     if (!this.banned) {
       // laying low (a match with nothing loaded) cools detection a lot faster
-      const cool = (this.maxRisk === 0 ? 25 : 15) * (S.coolMul || 1);
+      const cool = ((this.maxRisk === 0 ? 25 : 15) + S.coolAdd) * (S.coolMul || 1);
       this.cooled = Math.min(this.det, cool);
       this.det = this.det - cool;
       if (win && this.maxRisk >= 30 && this.detStart < 25 && this.det < 25) s.ghostWins = (s.ghostWins || 0) + 1;
     }
     this.detEnd = this.det;
+    Save.data.wave = (Save.data.wave || 0) * 0.85 + (this.banned ? 0 : (Math.max(0, this.det - this.detStart) * (1 + 0.5 * this.tierOf(this.det)) + (this.det >= 50 ? 5 : 0)) * S.waveMul);
     Shop.panic = false; Shop.compute();
   },
 };
@@ -5692,7 +6223,7 @@ const Style = {
     s.bestStyle = Math.max(s.bestStyle || 0, Math.round(this.points));
     s.topStyleRank = Math.max(s.topStyleRank || 0, this.bestRank);
     if (banned || this.points <= 0) return;
-    const c = this.points * M.def.cr * 0.01 * Shop.S.cr;
+    const c = this.points * M.def.cr * 0.01 * Shop.S.cr * Shop.S.stylePay;
     M.earn.style += c; M.earn.total += c; Save.data.credits += c;
   },
 };
@@ -5741,6 +6272,20 @@ function drawCrosshair(c, x, y, xh, k) {
         c.ellipse(x, y + s * 0.45, s * 0.75, s * 0.58, 0, 0, TAU); c.fill();
         for (const [ox, oy] of [[-1.05, -0.35], [-0.38, -0.95], [0.38, -0.95], [1.05, -0.35]]) { c.beginPath(); c.arc(x + ox * s, y + oy * s, s * 0.3, 0, TAU); c.fill(); }
         return;
+      }
+      case 'star': {
+        const r = gap + size * 0.75, ri = r * 0.45;
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? ri : r; i ? c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+        c.closePath(); c.stroke(); return;
+      }
+      case 'ringx': {
+        const r = gap + size * 0.6, k = r * 0.5;
+        c.arc(x, y, r, 0, TAU); c.moveTo(x - k, y - k); c.lineTo(x + k, y + k); c.moveTo(x + k, y - k); c.lineTo(x - k, y + k); c.stroke(); return;
+      }
+      case 'hex': {
+        const r = gap + size * 0.6;
+        for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; i ? c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : c.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+        c.closePath(); c.stroke(); return;
       }
       case 'diamond': {
         const r = gap + size * 0.6;
@@ -5938,6 +6483,7 @@ const HUD = {
       e.kick > 0 ? ['Admin kicks', 'Fake Admin', e.kick] : null,
       e.clip > 0 ? ['Clip farming', `${U.fmt(e.salt)} salt × 1 kill`, e.clip] : null,
       e.chips > 0 ? ['Credit chips', 'Loot Drops', e.chips] : null,
+      e.payroll > 0 ? ['Admin payroll', 'admins work for you now', e.payroll] : null,
       e.interest > 0 ? ['Interest', '2% of your wallet', e.interest] : null,
       e.win > 0 ? ['Win bonus', winWhy, e.win] : null,
     ].filter(Boolean);
@@ -5995,9 +6541,11 @@ const HUD = {
     const items = [];
     for (const c of X.doneContracts) items.push(`<li class="ok">Contract done: ${U.esc(c)}</li>`);
     for (const a of X.newAch) items.push(`<li class="achv">Achievement: <b>${U.esc(a.name)}</b> · +${a.salt} salt</li>`);
+    if (e.parts) items.push(`<li class="ok">+${e.parts} loader part${e.parts > 1 ? 's' : ''} from rival cheaters (spend them on attachments in the Arsenal)</li>`);
     for (const n of X.takeNotes()) items.push(`<li class="rk">${U.esc(n)}</li>`);
     return `<div class="sum-prog">
       <div class="sum-rank"><span>+${e.xp} XP</span><b>${U.esc(ri.name)}</b><div class="track"><i style="width:${Math.round(ri.frac * 100)}%"></i></div><em>${ri.next ? U.fmt(ri.xp - ri.cur) + ' / ' + U.fmt(ri.next - ri.cur) : 'max rank'}</em></div>
+      <div class="sum-rank pass"><span>Pass</span><b>Tier ${X.passInfo().tier}</b><div class="track"><i style="width:${Math.round(X.passInfo().frac * 100)}%"></i></div><em>${X.passInfo().tier >= PASS_TIERS ? 'complete' : X.passInfo().into + ' / ' + PASS_XP}</em></div>
       ${items.length ? `<ul>${items.join('')}</ul>` : ''}
     </div>`;
   },
@@ -6122,7 +6670,7 @@ const HUD = {
     c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     // bounty and boss markers
     for (const b of M.bots) {
-      if (!b.alive || b.gone || !(b.bounty || b.boss)) continue;
+      if (!b.alive || b.gone || !(b.bounty || b.boss || b.cheater)) continue;
       pt[0] = b.pos[0]; pt[1] = b.pos[1] + 2.5 * (b.scale || 1); pt[2] = b.pos[2];
       const s = GFX.project(pt, tmp);
       if (!s || s[0] < -60 || s[0] > w + 60 || s[1] < -60 || s[1] > h + 60) continue;
@@ -6133,6 +6681,9 @@ const HUD = {
         c.fillStyle = '#ff3d3d'; c.fillRect(x - bw / 2, y - 10, bw * fr, 6);
         c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText('RAID BOSS', x, y - 17);
         c.fillStyle = '#ffd0d0'; c.fillText('RAID BOSS', x, y - 17);
+      } else if (b.cheater) {
+        c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText('CHEATER ×6', x, y - 10);
+        c.fillStyle = '#d18cff'; c.fillText('CHEATER ×6', x, y - 10);
       } else {
         c.fillStyle = '#ffd23f'; c.beginPath(); c.arc(x, y - 6, 8, 0, TAU); c.fill();
         c.fillStyle = '#1b1503'; c.font = '800 12px Oxanium, "Segoe UI", sans-serif'; c.fillText('$', x, y - 2);
@@ -6197,7 +6748,7 @@ const HUD = {
     for (const b of M.bots) {
       if (!b.alive || b.gone) continue;
       const ally = b.team === 'blue';
-      c.fillStyle = b.bounty ? '#ffd23f' : ally ? '#4dd4ff' : M.mode && !M.mode.ffa ? '#ff5d5d' : b.colHex;
+      c.fillStyle = b.cheater ? '#b14dff' : b.bounty ? '#ffd23f' : ally ? '#4dd4ff' : M.mode && !M.mode.ffa ? '#ff5d5d' : b.colHex;
       c.beginPath(); c.arc(b.pos[0], b.pos[2], 2.2 / scale * 2, 0, TAU); c.fill();
       if (ally) { c.strokeStyle = '#ffffff'; c.lineWidth = 0.5; c.stroke(); }
     }
@@ -6505,13 +7056,15 @@ const Hub = {
   tab_bandit() {
     const mod = MODULE_BY_ID[this.selMod] || MODULES[0];
     const nodes = UPGRADES.filter(u => u.mod === mod.id);
-    const PX = 172, PY = 96, NW = 150, NH = 66, PAD = 12;
     const maxX = Math.max(...nodes.map(n => n.x)), maxY = Math.max(...nodes.map(n => n.y));
+    // four-column trees use slimmer nodes so they still fit beside the module list
+    const wide = maxX >= 3, PX = wide ? 136 : 172, PY = 96, NW = wide ? 126 : 150, NH = 66, PAD = 12;
     const TW = (maxX + 1) * PX - (PX - NW) + PAD * 2, TH = (maxY + 1) * PY - (PY - NH) + PAD * 2;
     const pos = n => [PAD + n.x * PX, PAD + n.y * PY];
     let links = '';
     for (const n of nodes) for (const r of (n.req || [])) {
       const pr = UPGRADE_BY_ID[r];
+      if (pr.mod !== n.mod) continue; // cross-module requirements are listed in the detail panel, not drawn
       const [ax, ay] = pos(pr), [bx, by] = pos(n);
       const x1 = ax + NW / 2, y1 = ay + NH, x2 = bx + NW / 2, y2 = by;
       const lit = Shop.owned(r);
@@ -6526,7 +7079,7 @@ const Hub = {
       const poor = st === 'available' && Save.data.credits < n.cost;
       const [x, y] = pos(n);
       const cost = st === 'owned' ? 'INJECTED' : U.fmt(n.cost) + ' CR';
-      return `<button class="node ${st} ${poor ? 'poor' : ''} ${this.selNode === n.id ? 'sel' : ''}" data-act="node" data-up="${n.id}" style="left:${x}px;top:${y}px" aria-label="${U.esc(n.name)}: ${st}">
+      return `<button class="node ${st} ${poor ? 'poor' : ''} ${this.selNode === n.id ? 'sel' : ''}" data-act="node" data-up="${n.id}" style="left:${x}px;top:${y}px;width:${NW}px" aria-label="${U.esc(n.name)}: ${st}">
         <span class="n-name">${U.esc(n.name)}</span><span class="n-cost">${cost}</span></button>`;
     }).join('');
     const mods = MODULES.map(m => {
@@ -6587,7 +7140,7 @@ const Hub = {
   detCard() {
     const t = AC.tier(), d = Math.round(AC.det), S = Shop.S;
     const scan = AC.scanGain();
-    const tip = d >= 75 ? 'One more bad match and you are banned. Switch modules off at Bandit\'s and lay low.'
+    const tip = S.owner ? 'You own the servers. BotGuard still keeps a number, but it works for you now: no bans, no kicks, no ban waves.' : d >= 75 ? 'One more bad match and you are banned. Switch modules off at Bandit\'s and lay low.'
       : d >= 50 ? 'BotGuard is watching closely. Run fewer cheats or buy GHOSTWARE.'
       : d >= 25 ? 'You have been flagged. A match with everything switched off cools you down fast.'
       : 'Nobody suspects a thing. Yet.';
@@ -6595,6 +7148,7 @@ const Hub = {
       <div class="det-head"><span class="eyebrow">BotGuard anticheat</span><b>${d}% · ${t.name}</b></div>
       <div class="det-bar"><i style="width:${d}%"></i><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span></div>
       <p>${tip} Each scan adds <b>${scan.toFixed(1)}%</b> (risk ${S.risk.toFixed(1)}), every ${AC.interval()} s. Bans so far: ${Save.data.stats.bans || 0}.</p>
+      <p>Ban wave risk after each match: <b>${Math.round(AC.waveChance() * 100)}%</b>${AC.waveChance() ? '. Waves can ban you for matches you already finished.' : ' (only Monitored accounts or worse get caught in waves)'}.</p>
     </div>`;
   },
   contractsHtml() {
@@ -6627,7 +7181,7 @@ const Hub = {
       ['Damage', Math.min(1, sel.dmg * sel.pellets / 220), `${sel.pellets > 1 ? sel.pellets + '×' : ''}${sel.dmg}`],
       ['Fire rate', Math.min(1, (1 / sel.rate) / 14), `${Math.round(60 / sel.rate)} rpm`],
       ['Per second', Math.min(1, dps / maxDps), `${Math.round(dps)} dps`],
-      ['Magazine', Math.min(1, sel.mag / 32), `${sel.mag}`],
+      ['Magazine', Math.min(1, sel.mag / 32), `${Math.round(sel.mag * (Shop.attOf(sel.id).extmag ? 1.4 : 1))}`],
       ['Accuracy', 1 - Math.min(1, sel.spread / 0.09), `${(sel.spread / DEG).toFixed(1)}° spread`],
       ['Pay', (sel.pay - 1) / 0.5, `×${sel.pay} credits`],
     ].map(b => `<div class="bar"><span>${b[0]}</span><div class="track"><i style="width:${Math.round(b[1] * 100)}%"></i></div><em>${b[2]}</em></div>`).join('');
@@ -6646,6 +7200,7 @@ const Hub = {
         <div class="gd-head"><div><div class="eyebrow">${sel.kind}</div><h2>${U.esc(sel.name)}</h2></div>${act}</div>
         <p>${U.esc(sel.desc)}</p>
         <div class="bars">${bars}</div>
+        ${owned ? this.attHtml(sel) : ''}
         ${owned ? `<div class="skin-row"><h4>Finish</h4><div class="sw-row">${skins}</div><button class="link" data-act="tab" data-tab="locker">More finishes in the Locker</button></div>` : ''}
       </div>
     </section>`;
@@ -6663,6 +7218,7 @@ const Hub = {
       body = `<div class="lk-guns"><span>Apply to</span>${gunSel}</div><div class="skin-grid">${SKINS.map(s => {
         const own = !!D.skins[s.id], on = (D.skinOf[this.selWeapon] || 'factory') === s.id;
         const act = own ? (on ? '<span class="inj-done">Applied</span>' : `<button class="btn small" data-act="applyskin" data-skin="${s.id}">Apply</button>`)
+          : s.pass ? `<span class="locked-tag">Bandit Pass tier ${this.passTierOf('skin', s.id)}</span>`
           : `<button class="btn small ${D.salt >= s.cost ? 'buy' : 'poor'}" data-act="buycos" data-kind="skin" data-id="${s.id}">${U.fmt(s.cost)} salt</button>`;
         return `<div class="skin-card ${on ? 'on' : ''}"><div class="skin-sw pat${s.pat}" style="--c0:${s.c0};--c1:${s.c1}"></div><b>${U.esc(s.name)}</b>${act}</div>`;
       }).join('')}</div>`;
@@ -6673,7 +7229,7 @@ const Hub = {
         <div class="xh-controls">
           <div class="xh-styles">${XHAIRS.map(s => {
             const own = !!D.xhairs[s.id];
-            return `<button class="chipbtn ${x.style === s.id ? 'on' : ''} ${own ? '' : 'lock'}" data-act="${own ? 'xstyle' : 'buycos'}" data-kind="xhair" data-id="${s.id}">${U.esc(s.name)}${own ? '' : ` · ${s.cost} salt`}</button>`;
+            return `<button class="chipbtn ${x.style === s.id ? 'on' : ''} ${own ? '' : 'lock'}" data-act="${own ? 'xstyle' : 'buycos'}" data-kind="xhair" data-id="${s.id}">${U.esc(s.name)}${own ? '' : s.pass ? ` · pass tier ${this.passTierOf('xhair', s.id)}` : ` · ${s.cost} salt`}</button>`;
           }).join('')}</div>
           <div class="xh-colors">${XHAIR_COLORS.map(c => `<button class="cdot ${x.color === c ? 'on' : ''}" data-act="xcolor" data-color="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div>
           <label class="rng"><span>Size</span><input type="range" id="xh-size" min="2" max="16" step="1" value="${x.size}" data-act="xnum" data-key="size"><em>${x.size}</em></label>
@@ -6687,6 +7243,7 @@ const Hub = {
       body = `<div class="fx-grid">${KILLFX.map(k => {
         const own = !!D.killfxs[k.id], on = D.killfx === k.id;
         const act = own ? (on ? '<span class="inj-done">Active</span>' : `<button class="btn small" data-act="usefx" data-id="${k.id}">Use</button>`)
+          : k.pass ? `<span class="locked-tag">Bandit Pass tier ${this.passTierOf('killfx', k.id)}</span>`
           : `<button class="btn small ${D.salt >= k.cost ? 'buy' : 'poor'}" data-act="buycos" data-kind="killfx" data-id="${k.id}">${U.fmt(k.cost)} salt</button>`;
         return `<div class="fx-card ${on ? 'on' : ''}"><div class="fx-ico fx-${k.id}"></div><div><b>${U.esc(k.name)}</b><p>${U.esc(k.desc)}</p></div>${act}</div>`;
       }).join('')}</div>`;
@@ -6711,6 +7268,7 @@ const Hub = {
       ['Solo vs Squad wins', U.fmt((s.modeWins || {}).squad || 0)], ['Clutch series won', U.fmt((s.modeWins || {}).clutch || 0)],
       ['Rounds won', U.fmt(s.roundsWon || 0)], ['Team wins · teammate kills', U.fmt((s.modeWins || {}).tdm || 0) + ' · ' + U.fmt(s.allyKills || 0)],
       ['Jump-shot kills', U.fmt(s.jumpKills || 0)], ['No-scope kills', U.fmt(s.noScopes || 0)], ['Best style score', U.fmt(s.bestStyle || 0)], ['Top style rank', STYLE_RANKS[s.topStyleRank || 0].name],
+      ['Rival cheaters killed', U.fmt(s.rivals || 0)], ['Ban waves', U.fmt(s.waves || 0)], ['Loader parts', U.fmt(Save.data.parts || 0)], ['Pass tier', Extras.passInfo().tier + ' / ' + PASS_TIERS],
       ['Bans', U.fmt(s.bans || 0)], ['Kicked by admins', U.fmt(s.adminKicks || 0)], ['Admins fooled', U.fmt(s.adminsSurvived || 0)], ['Admins bribed', U.fmt(s.bribes || 0)],
       ['Raid bosses down', U.fmt(s.bosses || 0)], ['Bounties claimed', U.fmt(s.bounties || 0)], ['Bots kicked', U.fmt(s.kicks || 0)], ['Contracts done', U.fmt(s.contracts || 0)],
     ].map(t => `<div class="tile"><span>${t[0]}</span><b>${t[1]}</b></div>`).join('');
@@ -6748,6 +7306,44 @@ const Hub = {
     </section>`;
   },
 
+  passTierOf(kind, id) { for (let i = 1; i <= PASS_TIERS; i++) { const r = passReward(i); if (r.kind === kind && r.id === id) return i; } return '?'; },
+  attHtml(w) {
+    const D = Save.data, eq = D.att[w.id] || {};
+    const slots = ATT_SLOTS.filter(([slot]) => !(slot === 'optic' && w.scope)).map(([slot, label]) => {
+      const opts = ATTACHMENTS.filter(a => a.slot === slot).map(a => {
+        const own = Shop.attOwned(w.id, a.id), on = eq[slot] === a.id, cr = a.parts * ATT_CR_PER_PART;
+        const act = own ? `<button class="btn small ${on ? 'primary' : ''}" data-act="atteq" data-gun="${w.id}" data-att="${a.id}">${on ? 'Equipped' : 'Equip'}</button>`
+          : `<button class="btn small ${(D.parts || 0) >= a.parts ? 'buy' : 'poor'}" data-act="attbuy" data-pay="parts" data-gun="${w.id}" data-att="${a.id}">${a.parts} parts</button><button class="btn small ghost ${D.credits >= cr ? '' : 'poor'}" data-act="attbuy" data-pay="cr" data-gun="${w.id}" data-att="${a.id}">${U.fmt(cr)} CR</button>`;
+        return `<div class="att ${on ? 'on' : ''}"><b>${U.esc(a.name)}</b><span>${U.esc(a.desc)}</span><div class="att-act">${act}</div></div>`;
+      }).join('');
+      return `<div class="att-slot"><h5>${label}</h5><div class="att-opts">${opts}</div></div>`;
+    }).join('');
+    return `<div class="att-box"><div class="ct-head"><h4>Attachments</h4><span class="msg">${U.fmt(D.parts || 0)} loader parts · drop from rival cheaters</span></div>${slots}</div>`;
+  },
+  tab_pass() {
+    const D = Save.data, pi = Extras.passInfo();
+    const cells = [];
+    for (let i = 1; i <= PASS_TIERS; i++) {
+      const r = passReward(i), got = i <= (D.passClaimed || 0), cur = i === pi.tier + 1;
+      const big = r.kind === 'skin' || r.kind === 'xhair' || r.kind === 'killfx';
+      cells.push(`<div class="tier ${got ? 'got' : ''} ${cur ? 'cur' : ''} ${big ? 'big' : ''}"><span>${i}</span><b>${U.esc(Extras.passLabel(r))}</b></div>`);
+    }
+    return `<section class="pane pass">
+      <header class="pane-head"><div><div class="eyebrow">Season 1 // free for everyone, because Bandit forgot to add a paywall</div><h1>Bandit Pass</h1>
+        <p class="lede">50 tiers. Every ${PASS_XP} XP from matches and contracts unlocks the next one, and rewards land in your account automatically. Every 5th tier is a cosmetic you can't buy in the Locker.</p></div></header>
+      <div class="rank-card"><div><div class="eyebrow">Tier ${pi.tier} of ${PASS_TIERS}</div><h3>${pi.tier >= PASS_TIERS ? 'Pass complete' : 'Next: ' + U.esc(Extras.passLabel(passReward(pi.tier + 1)))}</h3></div>
+        <div class="rank-bar"><div class="track"><i style="width:${Math.round(pi.frac * 100)}%"></i></div><span>${pi.tier >= PASS_TIERS ? 'All rewards claimed' : pi.into + ' / ' + PASS_XP + ' XP to tier ' + (pi.tier + 1)}</span></div></div>
+      <div class="tier-grid">${cells.join('')}</div>
+    </section>`;
+  },
+  showWave(w) {
+    const t = w.hit ? `<h2>Ban wave #${w.n}</h2><p>BotGuard went back through old matches and you were in this batch.</p><p><b>−${U.fmt(w.fine)} CR</b>${w.fine ? ' fine' : ' (HWID Spoofer: no fine)'}, and your detection was reset to ${Math.round(AC.det)}%.</p>`
+      : w.appealed ? `<h2>Ban wave #${w.n}</h2><p>You were in it, but Appeal Bot filed before anyone noticed. Detection lowered to ${Math.round(AC.det)}% instead.</p>`
+      : `<h2>Ban wave #${w.n}</h2><p>BotGuard just banned ${U.fmt(w.banned)} accounts. You were not one of them. Yet.</p><p>Ban waves only hit Monitored accounts or worse. Cool off to get out of range.</p>`;
+    this.openModal(`<div class="wave ${w.hit ? 'hit' : ''}"><div class="eyebrow">BotGuard</div>${t}<div class="ov-row"><button class="btn primary" id="wave-ok">${w.hit ? 'Ouch' : 'Phew'}</button></div></div>`,
+      m => m.querySelector('#wave-ok').addEventListener('click', () => { SFX.ui(); this.closeModal(); this.render(); }));
+    if (w.hit) SFX.die(); else SFX.deny();
+  },
   rankHtml() {
     const ri = Extras.rankInfo();
     return `<div class="rank-card"><div><div class="eyebrow">Rank ${ri.r} of ${RANKS.length - 1}</div><h3>${U.esc(ri.name)}</h3></div>
@@ -6778,6 +7374,13 @@ const Hub = {
       }
       case 'modelocked': SFX.deny(); this.toast('Unlock the modes before this one first', 'bad'); break;
       case 'play': SFX.ui(); this.startMatch(b.dataset.map); break;
+      case 'attbuy': {
+        const a = ATT_BY_ID[b.dataset.att];
+        if (Shop.buyAtt(b.dataset.gun, a.id, b.dataset.pay)) { SFX.buy(); this.toast(`${a.name} fitted to the ${WEAPON_BY_ID[b.dataset.gun].name}`, 'good'); this.render(); }
+        else { SFX.deny(); this.toast(b.dataset.pay === 'parts' ? 'Not enough loader parts. Kill rival cheaters for more.' : 'Not enough credits yet', 'bad'); }
+        break;
+      }
+      case 'atteq': SFX.ui(); Shop.equipAtt(b.dataset.gun, b.dataset.att); this.render(); break;
       case 'claim': {
         const c = Extras.claim(+b.dataset.i);
         if (c) { SFX.buy(); this.toast(`Contract paid: +${U.fmt(c.cr)} CR, +${c.salt} salt`, 'good'); this.render(); }
@@ -6815,6 +7418,8 @@ const Hub = {
       case 'lockgun': SFX.tick(); this.selWeapon = b.dataset.gun; this.render(); break;
       case 'buycos': {
         const kind = b.dataset.kind, id = b.dataset.id;
+        const it = (kind === 'skin' ? SKINS : kind === 'xhair' ? XHAIRS : KILLFX).find(i => i.id === id);
+        if (it && it.pass) { SFX.deny(); this.toast(`Unlocks at Bandit Pass tier ${this.passTierOf(kind, id)}`, 'bad'); break; }
         if (Shop.buyCosmetic(kind, id)) {
           SFX.buy();
           if (kind === 'skin') D.skinOf[this.selWeapon || D.equipped] = id;

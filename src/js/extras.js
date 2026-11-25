@@ -18,9 +18,11 @@ const Extras = {
     M.ggIdx = 0;
     if (M.mode.id === 'gungame') this.setGun(0, true);
     if (M.mode.id === 'boss') this.makeBoss(M.bots[0]);
+    this.spawnRivals();
     if (S.ragebait) { Chat.sus = Math.max(Chat.sus, 40); Chat.peak = Math.max(Chat.peak, 40); }
     if (S.bounty) this.bountyT = 2.5;
     if (M.def.grav) Chat.queue(U.pick(M.bots), U.pick(CHAT.moon), U.rand(6, 10), 0);
+    if (M.def.chat) Chat.queue(U.pick(M.bots), U.pick(M.def.chat), U.rand(5, 9), 0);
   },
   update(dt) {
     const M = Match, S = Shop.S;
@@ -71,7 +73,8 @@ const Extras = {
   // extra credit multiplier for special kills (bounty, boss, nuke)
   killMult(b, info) {
     let k = 1;
-    if (b.bounty) k *= 5;
+    if (b.bounty) k *= 5 + Shop.S.bountyAdd;
+    if (b.cheater) k *= 6;
     if (b.boss) k *= 15;
     if (info.nuke) k *= 2;
     return k;
@@ -91,8 +94,9 @@ const Extras = {
       HUD.callout('BOUNTY CLAIMED', 'multi'); SFX.coin();
     }
     if (b.boss) this.bossDown(b);
-    if (S.chips && !b.boss) this.chips.push({ pos: [b.pos[0] + U.rand(-0.5, 0.5), 0, b.pos[2] + U.rand(-0.5, 0.5)], v: M.def.cr * 0.5 * S.cr, t: 12 });
-    if (S.timeThief && M.mode.id !== 'clutch' && this.timeAdded < 60) { M.time += 1; M.total += 1; this.timeAdded++; }
+    if (b.cheater) this.rivalDown(b);
+    if (S.chips && !b.boss) this.chips.push({ pos: [b.pos[0] + U.rand(-0.5, 0.5), 0, b.pos[2] + U.rand(-0.5, 0.5)], v: M.def.cr * 0.5 * S.cr * S.chipMul, t: 12 });
+    if (S.timeThief && M.mode.id !== 'clutch' && this.timeAdded < S.thiefCap) { M.time += 1; M.total += 1; this.timeAdded++; }
     if (S.chain && !info.chain) this.chainLightning(b);
     if (M.mode.id === 'gungame' && M.phase === 'play') this.gunUp();
     if (!this.inStrike) this.onStreak(p.streak);
@@ -114,17 +118,17 @@ const Extras = {
   onStreak(n) {
     const M = Match, S = Shop.S, p = M.p;
     if (S.recon && n % 6 === 3) {
-      this.uavT = 12; this.call('RECON DRONE ONLINE');
+      this.uavT = 12 * S.uavTime; this.call('RECON DRONE ONLINE');
     }
     if (S.carePkg && n % 5 === 0) {
       p.hp = 100;
-      const cash = M.def.cr * 4 * S.cr;
+      const cash = M.def.cr * 4 * S.cr * S.careMul;
       M.earn.streak += cash; M.earn.total += cash; Save.data.credits += cash;
       M.addFloater([p.pos[0], p.pos[1] + 2.4, p.pos[2]], '+' + U.fmt(cash) + ' CR', '#ffd23f', 1.3, true);
       this.call('CARE PACKAGE'); SFX.coin();
     }
     if (S.airstrike && n % 8 === 0) {
-      this.strikes.push({ pos: this.aimGround(80), r: 9, t: 1.1, kind: 'air' });
+      this.strikes.push({ pos: this.aimGround(80), r: 9 * S.strikeR, t: 1.1, kind: 'air' });
       AC.onAbility('airstrike');
       this.call('AIRSTRIKE INBOUND');
       this.react(CHAT.strike, 1.4);
@@ -154,7 +158,7 @@ const Extras = {
     const S = Shop.S;
     if (!S.orbital) return;
     if (this.orbitalCD > 0) { SFX.deny(); return; }
-    this.orbitalCD = 20;
+    this.orbitalCD = 20 * S.orbitalCD;
     this.strikes.push({ pos: this.aimGround(160), r: 6, t: 0.45, kind: 'laser' });
     HUD.callout('ORBITAL LASER', 'multi'); SFX.freeze();
     AC.onAbility('orbital');
@@ -215,7 +219,7 @@ const Extras = {
   chainLightning(src) {
     const M = Match;
     const near = M.bots.filter(b => b.alive && !b.gone && b.team !== 'blue' && b !== src && V.dist(b.pos, src.pos) < 14)
-      .sort((a, b) => V.dist(a.pos, src.pos) - V.dist(b.pos, src.pos)).slice(0, 2);
+      .sort((a, b) => V.dist(a.pos, src.pos) - V.dist(b.pos, src.pos)).slice(0, Shop.S.chainN);
     for (const b of near) {
       const a = M.chestPoint(src), c = M.chestPoint(b);
       M.addTracer(a, c, [0.6, 0.85, 1], 0.05, 0.25);
@@ -240,7 +244,7 @@ const Extras = {
     const S = Shop.S;
     if (!S.slowmo) return;
     if (this.slowCD > 0) { SFX.deny(); return; }
-    this.slowT = S.matrix ? 8 : 5; this.slowCD = (S.matrix ? 15 : 25) + this.slowT;
+    this.slowT = (S.matrix ? 8 : 5) + S.slowAdd; this.slowCD = (S.matrix ? 15 : 25) * S.slowCDMul + this.slowT;
     HUD.callout('BULLET TIME', 'multi'); SFX.freeze();
     AC.onAbility('slowmo');
     this.react(CHAT.freeze, 1);
@@ -248,8 +252,8 @@ const Extras = {
   botTime() { return this.slowT > 0 ? 0.3 : 1; },
   tryRewind() {
     const M = Match, p = M.p;
-    if (!Shop.S.rewind || this.rewindUsed || !this.hist.length) return false;
-    this.rewindUsed = true;
+    if (!Shop.S.rewind || (this.rewindUsed || 0) >= Shop.S.rewinds || !this.hist.length) return false;
+    this.rewindUsed = (this.rewindUsed || 0) + 1;
     const h = this.hist.find(x => M.clock - x.t <= 3.2) || this.hist[0];
     for (let i = 0; i < 14; i++) M.addPart(p.pos[0], p.pos[1] + U.rand(0.2, 1.8), p.pos[2], U.rand(-1.5, 1.5), U.rand(-0.5, 1.5), U.rand(-1.5, 1.5), 0.08, [0.65, 0.55, 1], 0.6, 0, 1, 0);
     V.copy(p.pos, h.pos); V.set(p.vel, 0, 0, 0);
@@ -280,7 +284,7 @@ const Extras = {
       b = pool.find(o => o.pers === 'salty') || U.pick(pool);
     }
     if (!b) { SFX.deny(); return; }
-    this.adminCD = 15;
+    this.adminCD = 15 * S.kickCD;
     if (b.alive) M.debris(b, null, true);
     b.alive = false; b.gone = true; b.rejoinT = U.rand(4, 7);
     if (b.bounty) { b.bounty = false; this.bounty = null; this.bountyT = 2; }
@@ -307,6 +311,75 @@ const Extras = {
   react(pool, delay) {
     const foes = Match.bots.filter(b => b.team !== 'blue' && !b.gone);
     if (foes.length) Chat.queue(U.pick(foes), U.pick(pool), delay + U.rand(0, 0.8), Math.max(2, Chat.tier));
+  },
+
+  /* ---------------- rival cheaters ---------------- */
+  spawnRivals() {
+    const M = Match;
+    const foes = M.bots.filter(b => b.team !== 'blue' && !b.boss);
+    if (foes.length < 5) return;
+    if (!U.chance(AC.det >= 50 ? 0.4 : 0.2)) return;
+    const n = foes.length >= 12 && U.chance(0.5) ? 2 : 1;
+    U.shuffle(foes.slice()).slice(0, n).forEach((b, i) => this.makeRival(b, 6 + i * 5));
+  },
+  makeRival(b, delay) {
+    b.cheater = true; b.accVar *= 1.6; b.prevAcc = b.col.acc; b.prevHex = b.colHex;
+    b.col.acc = U.hex('#b14dff'); b.colHex = '#b14dff';
+    const other = Match.bots.find(o => o !== b && o.team !== 'blue');
+    if (other) Chat.queue(other, U.pick(CHAT.rivalCall).replace('{n}', b.name), delay || 6, 1);
+  },
+  rivalDown(b) {
+    const M = Match, D = Save.data, s = D.stats;
+    const n = 1 + (U.chance(0.5) ? 1 : 0) + Shop.S.partsAdd;
+    D.parts = (D.parts || 0) + n; M.earn.parts = (M.earn.parts || 0) + n;
+    s.rivals = (s.rivals || 0) + 1;
+    this.track('rival', 1);
+    HUD.callout(`RIVAL CHEATER DOWN · +${n} LOADER PART${n > 1 ? 'S' : ''}`, 'multi'); SFX.coin();
+    Chat.queue(b, U.pick(CHAT.rivalDown), 0.4, 0);
+    // they log off and come back clean
+    b.cheater = false; b.accVar /= 1.6; b.col.acc = b.prevAcc || b.col.acc; b.colHex = b.prevHex || b.colHex;
+  },
+
+  /* ---------------- Bandit Pass ---------------- */
+  passInfo() {
+    const xp = Save.data.stats.passXp || 0, tier = Math.min(PASS_TIERS, Math.floor(xp / PASS_XP));
+    return { xp, tier, frac: tier >= PASS_TIERS ? 1 : (xp % PASS_XP) / PASS_XP, into: xp % PASS_XP };
+  },
+  addPassXp(n) {
+    const s = Save.data.stats;
+    s.passXp = (s.passXp || 0) + n;
+    this.checkPass();
+  },
+  checkPass() {
+    const D = Save.data, tier = this.passInfo().tier, msgs = [];
+    while ((D.passClaimed || 0) < tier) {
+      D.passClaimed = (D.passClaimed || 0) + 1;
+      msgs.push(`Bandit Pass tier ${D.passClaimed}: ${this.grantPass(D.passClaimed)}`);
+    }
+    if (!msgs.length) return;
+    // several tiers at once collapse into one line so they don't flood the screen
+    const shown = msgs.length > 2 ? [`Bandit Pass: +${msgs.length} tiers, now tier ${D.passClaimed}. See the Pass tab.`] : msgs;
+    this.notes.push(...shown);
+    if (Game.mode !== 'match') for (const m of shown) Hub.toast(m, 'good');
+  },
+  passLabel(r) {
+    if (r.kind === 'skin') return (SKIN_BY_ID[r.id] || {}).name + ' finish';
+    if (r.kind === 'xhair') return (XHAIRS.find(x => x.id === r.id) || {}).name + ' crosshair';
+    if (r.kind === 'killfx') return (KILLFX.find(x => x.id === r.id) || {}).name + ' kill effect';
+    if (r.kind === 'parts') return r.n + ' loader part' + (r.n > 1 ? 's' : '');
+    if (r.kind === 'salt') return r.n + ' salt';
+    return U.fmt(this.passCr(r.n)) + ' CR';
+  },
+  passCr(n) { return Math.round(Math.max(...MAPS.filter(m => Save.data.maps[m.id]).map(m => m.cr), 10) * n * Shop.smurfMult()); },
+  grantPass(i) {
+    const D = Save.data, r = passReward(i);
+    if (r.kind === 'skin') D.skins[r.id] = true;
+    else if (r.kind === 'xhair') D.xhairs[r.id] = true;
+    else if (r.kind === 'killfx') D.killfxs[r.id] = true;
+    else if (r.kind === 'parts') D.parts = (D.parts || 0) + r.n;
+    else if (r.kind === 'salt') D.salt += r.n;
+    else { const c = this.passCr(r.n); D.credits += c; D.stats.crEarned += c; }
+    return this.passLabel(r);
   },
 
   /* ---------------- Raid Boss ---------------- */
@@ -356,11 +429,11 @@ const Extras = {
   onMatchEnd(win, early) {
     const M = Match, S = Shop.S, s = Save.data.stats;
     if (S.clip && M.earn.salt > 0 && !early && !AC.banned) {
-      const c = M.earn.salt * M.def.cr;
+      const c = M.earn.salt * M.def.cr * S.clipMul;
       M.earn.clip = c; M.earn.total += c; Save.data.credits += c;
     }
     if (S.interest && !AC.banned) {
-      const c = Math.min(Math.max(0, Save.data.credits) * 0.02, M.def.cr * 20 * S.cr);
+      const c = Math.min(Math.max(0, Save.data.credits) * S.interestRate, M.def.cr * 20 * S.cr * S.interestCap);
       M.earn.interest = c; M.earn.total += c; Save.data.credits += c;
     }
     if (!early) {
@@ -370,6 +443,7 @@ const Extras = {
     const xp = Math.round(M.st.kills + M.st.hs * 0.5 + (win ? 30 : 0) + (early ? 0 : 10));
     M.earn.xp = xp;
     s.xp = (s.xp || 0) + xp;
+    this.addPassXp(xp);
   },
   // runs after finish() has folded this match into the career stats
   afterStats() { this.checkRank(); this.checkAch(); },
@@ -414,11 +488,12 @@ const Extras = {
   claim(i) {
     const D = Save.data, c = D.contracts[i];
     if (!c || !c.done) return false;
-    const cr = c.cr * (Shop.S.insider ? 2 : 1);
+    const cr = Math.round(c.cr * (Shop.S.insider ? 2 : 1) * Shop.S.contractMul);
     D.credits += cr; D.salt += c.salt;
     D.stats.crEarned += cr;
     D.stats.contracts = (D.stats.contracts || 0) + 1;
     D.stats.xp = (D.stats.xp || 0) + 40;
+    this.addPassXp(40);
     D.contracts[i] = this.rollContract(D.contracts.map(x => x.id));
     this.checkRank(); this.checkAch();
     Save.save();

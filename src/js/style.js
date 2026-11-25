@@ -92,7 +92,7 @@ const Style = {
     s.bestStyle = Math.max(s.bestStyle || 0, Math.round(this.points));
     s.topStyleRank = Math.max(s.topStyleRank || 0, this.bestRank);
     if (banned || this.points <= 0) return;
-    const c = this.points * M.def.cr * 0.01 * Shop.S.cr;
+    const c = this.points * M.def.cr * 0.01 * Shop.S.cr * Shop.S.stylePay;
     M.earn.style += c; M.earn.total += c; Save.data.credits += c;
   },
 };

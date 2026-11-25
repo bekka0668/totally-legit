@@ -12,7 +12,7 @@ Double-click `TotallyLegit.html`. It runs offline in any current desktop browser
 | Left click | Shoot · Right click: aim down sights (scope on the LDR-50) |
 | Space | Jump (hold to keep hopping once you own Bunny Hop) |
 | R | Reload |
-| 1–9, wheel | Switch weapon |
+| 1–9 and 0, wheel | Switch weapon |
 | Tab | Scoreboard |
 | T or Enter | Type in chat (the bots answer) |
 | Q / E / F | Freeze Frame / Blink / AFK Farm, once bought |
@@ -38,12 +38,17 @@ Cheats that add bots always add them to the enemy team. Wallhack and aimbot igno
 
 ## How it plays
 
-- **Credits** come from kills, headshots, streaks and winning. Spend them at **Bandit's** on 105 upgrades across 17 cheat modules (aimbot, wallhack, triggerbot, hitbox expander, no spread, speedhack, ammo, godmode, money hacks, server tricks, killstreak rewards, social hacks, weapon mods, time tricks, economy hacks, and two stealth modules), on 9 guns in the **Arsenal**, and on unlocking 9 lobbies, up to a low-gravity Moon Base with 40 bots.
+- **Credits** come from kills, headshots, streaks and winning. Spend them at **Bandit's** on 191 upgrades across 17 cheat modules (aimbot, wallhack, triggerbot, hitbox expander, no spread, speedhack, ammo, godmode, money hacks, server tricks, killstreak rewards, social hacks, weapon mods, time tricks, economy hacks, and two stealth modules), on 10 guns in the **Arsenal**, and on unlocking 15 lobbies: from a 1v1 closet through a parking garage, an arctic outpost, a neon arcade, desert ruins, a volcano lab and a low-gravity Moon Base, up to the Admin's House with 48 bots.
 - **BotGuard** is the anticheat. Every cheat has a detection risk, and BotGuard scans you every 20 s during a match, so running everything at once gets you caught fast. Obvious plays (wall kills, snaps, spinning, abilities) add more. Detection carries between matches and cools off after each one, faster if you play a match with nothing loaded.
   - At 25 / 50 / 75% you're Flagged / Monitored / Under Review. At 100% you're **banned**: that match's credits are confiscated and you pay a 10% wallet fine.
   - Enough chat reports bring an **admin** to spectate you for 22 s. If you look dirty while they watch, they kick you and you lose half the match's credits.
+  - Once you own everything, **Server Owner** (top of SPOOFER) ends the threat for good: no bans, kicks or ban waves.
   - **GHOSTWARE** and **SPOOFER** are the stealth modules: scramble signatures, humanize your aim, hit **P** to unload everything, bribe admins, spoof your hardware ID, auto-appeal bans.
 - **Streaks and style**: your kill streak multiplies kill credits (×1.1 at 3, ×1.25 at 5, ×1.5 at 10, ×2 at 20). Flashy kills score **style points**: jump shots (+40, +30 more for a mid-air headshot), no-scopes, long shots, last-bullet kills, revenge, quick swaps, low-health clutches, wallbangs. Points fill a style meter from MID up to TOTALLY LEGIT that multiplies kill credits up to ×2 and drains when you stop killing. Every point also pays out at the end of the match.
+- **Ban waves**: detection you build up and keep leaves a trail. Between matches, while you're Monitored or worse, BotGuard can ban you for matches you already finished: a 5% wallet fine and a detection reset. Cool off to get out of range.
+- **Rival cheaters** show up in lobbies with 5+ bots (more often when you're hot). They wall through cover and react fast, are tagged CHEATER, and pay 6× when killed. They also drop **loader parts**.
+- **Attachments** (Arsenal): each gun has an optic, muzzle and magazine slot: Red Dot, Holo Sight, Suppressor (less detection), Compensator, Extended Mag, Fast Mag. Pay with loader parts, or credits.
+- **Bandit Pass** (Pass tab): 50 tiers on the XP you already earn. Rewards drop automatically: salt, credits, loader parts, and every 5th tier a finish, crosshair or kill effect you can't buy in the Locker.
 - **Contracts** on the Play tab are Bandit's odd jobs (get 30 headshots, win a Raid Boss match, type "ez" three times...). Claim them for credits and salt, or swap one for 10 salt.
 - **Ranks** go from Wood Bot to Server Owner. XP comes from kills, wins and contracts, and every rank-up pays salt.
 - **Achievements**: 41 of them on the Stats tab, each paying salt.

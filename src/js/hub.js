@@ -199,13 +199,15 @@ const Hub = {
   tab_bandit() {
     const mod = MODULE_BY_ID[this.selMod] || MODULES[0];
     const nodes = UPGRADES.filter(u => u.mod === mod.id);
-    const PX = 172, PY = 96, NW = 150, NH = 66, PAD = 12;
     const maxX = Math.max(...nodes.map(n => n.x)), maxY = Math.max(...nodes.map(n => n.y));
+    // four-column trees use slimmer nodes so they still fit beside the module list
+    const wide = maxX >= 3, PX = wide ? 136 : 172, PY = 96, NW = wide ? 126 : 150, NH = 66, PAD = 12;
     const TW = (maxX + 1) * PX - (PX - NW) + PAD * 2, TH = (maxY + 1) * PY - (PY - NH) + PAD * 2;
     const pos = n => [PAD + n.x * PX, PAD + n.y * PY];
     let links = '';
     for (const n of nodes) for (const r of (n.req || [])) {
       const pr = UPGRADE_BY_ID[r];
+      if (pr.mod !== n.mod) continue; // cross-module requirements are listed in the detail panel, not drawn
       const [ax, ay] = pos(pr), [bx, by] = pos(n);
       const x1 = ax + NW / 2, y1 = ay + NH, x2 = bx + NW / 2, y2 = by;
       const lit = Shop.owned(r);
@@ -220,7 +222,7 @@ const Hub = {
       const poor = st === 'available' && Save.data.credits < n.cost;
       const [x, y] = pos(n);
       const cost = st === 'owned' ? 'INJECTED' : U.fmt(n.cost) + ' CR';
-      return `<button class="node ${st} ${poor ? 'poor' : ''} ${this.selNode === n.id ? 'sel' : ''}" data-act="node" data-up="${n.id}" style="left:${x}px;top:${y}px" aria-label="${U.esc(n.name)}: ${st}">
+      return `<button class="node ${st} ${poor ? 'poor' : ''} ${this.selNode === n.id ? 'sel' : ''}" data-act="node" data-up="${n.id}" style="left:${x}px;top:${y}px;width:${NW}px" aria-label="${U.esc(n.name)}: ${st}">
         <span class="n-name">${U.esc(n.name)}</span><span class="n-cost">${cost}</span></button>`;
     }).join('');
     const mods = MODULES.map(m => {
@@ -281,7 +283,7 @@ const Hub = {
   detCard() {
     const t = AC.tier(), d = Math.round(AC.det), S = Shop.S;
     const scan = AC.scanGain();
-    const tip = d >= 75 ? 'One more bad match and you are banned. Switch modules off at Bandit\'s and lay low.'
+    const tip = S.owner ? 'You own the servers. BotGuard still keeps a number, but it works for you now: no bans, no kicks, no ban waves.' : d >= 75 ? 'One more bad match and you are banned. Switch modules off at Bandit\'s and lay low.'
       : d >= 50 ? 'BotGuard is watching closely. Run fewer cheats or buy GHOSTWARE.'
       : d >= 25 ? 'You have been flagged. A match with everything switched off cools you down fast.'
       : 'Nobody suspects a thing. Yet.';
@@ -289,6 +291,7 @@ const Hub = {
       <div class="det-head"><span class="eyebrow">BotGuard anticheat</span><b>${d}% · ${t.name}</b></div>
       <div class="det-bar"><i style="width:${d}%"></i><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span></div>
       <p>${tip} Each scan adds <b>${scan.toFixed(1)}%</b> (risk ${S.risk.toFixed(1)}), every ${AC.interval()} s. Bans so far: ${Save.data.stats.bans || 0}.</p>
+      <p>Ban wave risk after each match: <b>${Math.round(AC.waveChance() * 100)}%</b>${AC.waveChance() ? '. Waves can ban you for matches you already finished.' : ' (only Monitored accounts or worse get caught in waves)'}.</p>
     </div>`;
   },
   contractsHtml() {
@@ -321,7 +324,7 @@ const Hub = {
       ['Damage', Math.min(1, sel.dmg * sel.pellets / 220), `${sel.pellets > 1 ? sel.pellets + '×' : ''}${sel.dmg}`],
       ['Fire rate', Math.min(1, (1 / sel.rate) / 14), `${Math.round(60 / sel.rate)} rpm`],
       ['Per second', Math.min(1, dps / maxDps), `${Math.round(dps)} dps`],
-      ['Magazine', Math.min(1, sel.mag / 32), `${sel.mag}`],
+      ['Magazine', Math.min(1, sel.mag / 32), `${Math.round(sel.mag * (Shop.attOf(sel.id).extmag ? 1.4 : 1))}`],
       ['Accuracy', 1 - Math.min(1, sel.spread / 0.09), `${(sel.spread / DEG).toFixed(1)}° spread`],
       ['Pay', (sel.pay - 1) / 0.5, `×${sel.pay} credits`],
     ].map(b => `<div class="bar"><span>${b[0]}</span><div class="track"><i style="width:${Math.round(b[1] * 100)}%"></i></div><em>${b[2]}</em></div>`).join('');
@@ -340,6 +343,7 @@ const Hub = {
         <div class="gd-head"><div><div class="eyebrow">${sel.kind}</div><h2>${U.esc(sel.name)}</h2></div>${act}</div>
         <p>${U.esc(sel.desc)}</p>
         <div class="bars">${bars}</div>
+        ${owned ? this.attHtml(sel) : ''}
         ${owned ? `<div class="skin-row"><h4>Finish</h4><div class="sw-row">${skins}</div><button class="link" data-act="tab" data-tab="locker">More finishes in the Locker</button></div>` : ''}
       </div>
     </section>`;
@@ -357,6 +361,7 @@ const Hub = {
       body = `<div class="lk-guns"><span>Apply to</span>${gunSel}</div><div class="skin-grid">${SKINS.map(s => {
         const own = !!D.skins[s.id], on = (D.skinOf[this.selWeapon] || 'factory') === s.id;
         const act = own ? (on ? '<span class="inj-done">Applied</span>' : `<button class="btn small" data-act="applyskin" data-skin="${s.id}">Apply</button>`)
+          : s.pass ? `<span class="locked-tag">Bandit Pass tier ${this.passTierOf('skin', s.id)}</span>`
           : `<button class="btn small ${D.salt >= s.cost ? 'buy' : 'poor'}" data-act="buycos" data-kind="skin" data-id="${s.id}">${U.fmt(s.cost)} salt</button>`;
         return `<div class="skin-card ${on ? 'on' : ''}"><div class="skin-sw pat${s.pat}" style="--c0:${s.c0};--c1:${s.c1}"></div><b>${U.esc(s.name)}</b>${act}</div>`;
       }).join('')}</div>`;
@@ -367,7 +372,7 @@ const Hub = {
         <div class="xh-controls">
           <div class="xh-styles">${XHAIRS.map(s => {
             const own = !!D.xhairs[s.id];
-            return `<button class="chipbtn ${x.style === s.id ? 'on' : ''} ${own ? '' : 'lock'}" data-act="${own ? 'xstyle' : 'buycos'}" data-kind="xhair" data-id="${s.id}">${U.esc(s.name)}${own ? '' : ` · ${s.cost} salt`}</button>`;
+            return `<button class="chipbtn ${x.style === s.id ? 'on' : ''} ${own ? '' : 'lock'}" data-act="${own ? 'xstyle' : 'buycos'}" data-kind="xhair" data-id="${s.id}">${U.esc(s.name)}${own ? '' : s.pass ? ` · pass tier ${this.passTierOf('xhair', s.id)}` : ` · ${s.cost} salt`}</button>`;
           }).join('')}</div>
           <div class="xh-colors">${XHAIR_COLORS.map(c => `<button class="cdot ${x.color === c ? 'on' : ''}" data-act="xcolor" data-color="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div>
           <label class="rng"><span>Size</span><input type="range" id="xh-size" min="2" max="16" step="1" value="${x.size}" data-act="xnum" data-key="size"><em>${x.size}</em></label>
@@ -381,6 +386,7 @@ const Hub = {
       body = `<div class="fx-grid">${KILLFX.map(k => {
         const own = !!D.killfxs[k.id], on = D.killfx === k.id;
         const act = own ? (on ? '<span class="inj-done">Active</span>' : `<button class="btn small" data-act="usefx" data-id="${k.id}">Use</button>`)
+          : k.pass ? `<span class="locked-tag">Bandit Pass tier ${this.passTierOf('killfx', k.id)}</span>`
           : `<button class="btn small ${D.salt >= k.cost ? 'buy' : 'poor'}" data-act="buycos" data-kind="killfx" data-id="${k.id}">${U.fmt(k.cost)} salt</button>`;
         return `<div class="fx-card ${on ? 'on' : ''}"><div class="fx-ico fx-${k.id}"></div><div><b>${U.esc(k.name)}</b><p>${U.esc(k.desc)}</p></div>${act}</div>`;
       }).join('')}</div>`;
@@ -405,6 +411,7 @@ const Hub = {
       ['Solo vs Squad wins', U.fmt((s.modeWins || {}).squad || 0)], ['Clutch series won', U.fmt((s.modeWins || {}).clutch || 0)],
       ['Rounds won', U.fmt(s.roundsWon || 0)], ['Team wins · teammate kills', U.fmt((s.modeWins || {}).tdm || 0) + ' · ' + U.fmt(s.allyKills || 0)],
       ['Jump-shot kills', U.fmt(s.jumpKills || 0)], ['No-scope kills', U.fmt(s.noScopes || 0)], ['Best style score', U.fmt(s.bestStyle || 0)], ['Top style rank', STYLE_RANKS[s.topStyleRank || 0].name],
+      ['Rival cheaters killed', U.fmt(s.rivals || 0)], ['Ban waves', U.fmt(s.waves || 0)], ['Loader parts', U.fmt(Save.data.parts || 0)], ['Pass tier', Extras.passInfo().tier + ' / ' + PASS_TIERS],
       ['Bans', U.fmt(s.bans || 0)], ['Kicked by admins', U.fmt(s.adminKicks || 0)], ['Admins fooled', U.fmt(s.adminsSurvived || 0)], ['Admins bribed', U.fmt(s.bribes || 0)],
       ['Raid bosses down', U.fmt(s.bosses || 0)], ['Bounties claimed', U.fmt(s.bounties || 0)], ['Bots kicked', U.fmt(s.kicks || 0)], ['Contracts done', U.fmt(s.contracts || 0)],
     ].map(t => `<div class="tile"><span>${t[0]}</span><b>${t[1]}</b></div>`).join('');
@@ -442,6 +449,44 @@ const Hub = {
     </section>`;
   },
 
+  passTierOf(kind, id) { for (let i = 1; i <= PASS_TIERS; i++) { const r = passReward(i); if (r.kind === kind && r.id === id) return i; } return '?'; },
+  attHtml(w) {
+    const D = Save.data, eq = D.att[w.id] || {};
+    const slots = ATT_SLOTS.filter(([slot]) => !(slot === 'optic' && w.scope)).map(([slot, label]) => {
+      const opts = ATTACHMENTS.filter(a => a.slot === slot).map(a => {
+        const own = Shop.attOwned(w.id, a.id), on = eq[slot] === a.id, cr = a.parts * ATT_CR_PER_PART;
+        const act = own ? `<button class="btn small ${on ? 'primary' : ''}" data-act="atteq" data-gun="${w.id}" data-att="${a.id}">${on ? 'Equipped' : 'Equip'}</button>`
+          : `<button class="btn small ${(D.parts || 0) >= a.parts ? 'buy' : 'poor'}" data-act="attbuy" data-pay="parts" data-gun="${w.id}" data-att="${a.id}">${a.parts} parts</button><button class="btn small ghost ${D.credits >= cr ? '' : 'poor'}" data-act="attbuy" data-pay="cr" data-gun="${w.id}" data-att="${a.id}">${U.fmt(cr)} CR</button>`;
+        return `<div class="att ${on ? 'on' : ''}"><b>${U.esc(a.name)}</b><span>${U.esc(a.desc)}</span><div class="att-act">${act}</div></div>`;
+      }).join('');
+      return `<div class="att-slot"><h5>${label}</h5><div class="att-opts">${opts}</div></div>`;
+    }).join('');
+    return `<div class="att-box"><div class="ct-head"><h4>Attachments</h4><span class="msg">${U.fmt(D.parts || 0)} loader parts · drop from rival cheaters</span></div>${slots}</div>`;
+  },
+  tab_pass() {
+    const D = Save.data, pi = Extras.passInfo();
+    const cells = [];
+    for (let i = 1; i <= PASS_TIERS; i++) {
+      const r = passReward(i), got = i <= (D.passClaimed || 0), cur = i === pi.tier + 1;
+      const big = r.kind === 'skin' || r.kind === 'xhair' || r.kind === 'killfx';
+      cells.push(`<div class="tier ${got ? 'got' : ''} ${cur ? 'cur' : ''} ${big ? 'big' : ''}"><span>${i}</span><b>${U.esc(Extras.passLabel(r))}</b></div>`);
+    }
+    return `<section class="pane pass">
+      <header class="pane-head"><div><div class="eyebrow">Season 1 // free for everyone, because Bandit forgot to add a paywall</div><h1>Bandit Pass</h1>
+        <p class="lede">50 tiers. Every ${PASS_XP} XP from matches and contracts unlocks the next one, and rewards land in your account automatically. Every 5th tier is a cosmetic you can't buy in the Locker.</p></div></header>
+      <div class="rank-card"><div><div class="eyebrow">Tier ${pi.tier} of ${PASS_TIERS}</div><h3>${pi.tier >= PASS_TIERS ? 'Pass complete' : 'Next: ' + U.esc(Extras.passLabel(passReward(pi.tier + 1)))}</h3></div>
+        <div class="rank-bar"><div class="track"><i style="width:${Math.round(pi.frac * 100)}%"></i></div><span>${pi.tier >= PASS_TIERS ? 'All rewards claimed' : pi.into + ' / ' + PASS_XP + ' XP to tier ' + (pi.tier + 1)}</span></div></div>
+      <div class="tier-grid">${cells.join('')}</div>
+    </section>`;
+  },
+  showWave(w) {
+    const t = w.hit ? `<h2>Ban wave #${w.n}</h2><p>BotGuard went back through old matches and you were in this batch.</p><p><b>−${U.fmt(w.fine)} CR</b>${w.fine ? ' fine' : ' (HWID Spoofer: no fine)'}, and your detection was reset to ${Math.round(AC.det)}%.</p>`
+      : w.appealed ? `<h2>Ban wave #${w.n}</h2><p>You were in it, but Appeal Bot filed before anyone noticed. Detection lowered to ${Math.round(AC.det)}% instead.</p>`
+      : `<h2>Ban wave #${w.n}</h2><p>BotGuard just banned ${U.fmt(w.banned)} accounts. You were not one of them. Yet.</p><p>Ban waves only hit Monitored accounts or worse. Cool off to get out of range.</p>`;
+    this.openModal(`<div class="wave ${w.hit ? 'hit' : ''}"><div class="eyebrow">BotGuard</div>${t}<div class="ov-row"><button class="btn primary" id="wave-ok">${w.hit ? 'Ouch' : 'Phew'}</button></div></div>`,
+      m => m.querySelector('#wave-ok').addEventListener('click', () => { SFX.ui(); this.closeModal(); this.render(); }));
+    if (w.hit) SFX.die(); else SFX.deny();
+  },
   rankHtml() {
     const ri = Extras.rankInfo();
     return `<div class="rank-card"><div><div class="eyebrow">Rank ${ri.r} of ${RANKS.length - 1}</div><h3>${U.esc(ri.name)}</h3></div>
@@ -472,6 +517,13 @@ const Hub = {
       }
       case 'modelocked': SFX.deny(); this.toast('Unlock the modes before this one first', 'bad'); break;
       case 'play': SFX.ui(); this.startMatch(b.dataset.map); break;
+      case 'attbuy': {
+        const a = ATT_BY_ID[b.dataset.att];
+        if (Shop.buyAtt(b.dataset.gun, a.id, b.dataset.pay)) { SFX.buy(); this.toast(`${a.name} fitted to the ${WEAPON_BY_ID[b.dataset.gun].name}`, 'good'); this.render(); }
+        else { SFX.deny(); this.toast(b.dataset.pay === 'parts' ? 'Not enough loader parts. Kill rival cheaters for more.' : 'Not enough credits yet', 'bad'); }
+        break;
+      }
+      case 'atteq': SFX.ui(); Shop.equipAtt(b.dataset.gun, b.dataset.att); this.render(); break;
       case 'claim': {
         const c = Extras.claim(+b.dataset.i);
         if (c) { SFX.buy(); this.toast(`Contract paid: +${U.fmt(c.cr)} CR, +${c.salt} salt`, 'good'); this.render(); }
@@ -509,6 +561,8 @@ const Hub = {
       case 'lockgun': SFX.tick(); this.selWeapon = b.dataset.gun; this.render(); break;
       case 'buycos': {
         const kind = b.dataset.kind, id = b.dataset.id;
+        const it = (kind === 'skin' ? SKINS : kind === 'xhair' ? XHAIRS : KILLFX).find(i => i.id === id);
+        if (it && it.pass) { SFX.deny(); this.toast(`Unlocks at Bandit Pass tier ${this.passTierOf(kind, id)}`, 'bad'); break; }
         if (Shop.buyCosmetic(kind, id)) {
           SFX.buy();
           if (kind === 'skin') D.skinOf[this.selWeapon || D.equipped] = id;
