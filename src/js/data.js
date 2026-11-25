@@ -14,16 +14,29 @@ const WEAPONS = [
   { id: 'shotgun', name: 'Barn Door', kind: 'Shotgun', cost: 1500, dmg: 12, head: 1.5, rate: 0.85, mag: 6, reload: 2.0,
     spread: 0.085, auto: false, pellets: 9, recoil: 0.09, range: 60, snd: 'shotgun', vm: [0.2, -0.24, -0.6],
     desc: 'Named after the one thing you could hit before.' },
+  { id: 'revolver', name: 'Hand Cannon', kind: 'Revolver', cost: 3000, dmg: 62, head: 3, rate: 0.42, mag: 6, reload: 2.1,
+    spread: 0.016, auto: false, pellets: 1, recoil: 0.085, range: 180, snd: 'revolver', vm: [0.19, -0.2, -0.5],
+    desc: 'Six shots. Each one is a strongly worded statement.' },
   { id: 'rifle', name: "Ol' Reliable", kind: 'Rifle', cost: 5000, dmg: 31, head: 3, rate: 0.1, mag: 26, reload: 1.9,
     spread: 0.02, auto: true, pellets: 1, recoil: 0.02, range: 200, snd: 'rifle', vm: [0.2, -0.24, -0.62],
     desc: 'Full-auto workhorse. Pairs beautifully with No Recoil.' },
   { id: 'sniper', name: 'LDR-50', kind: 'Sniper', cost: 15000, dmg: 115, head: 2.5, rate: 1.1, mag: 5, reload: 2.4,
     spread: 0.07, scopeSpread: 0, auto: false, pellets: 1, recoil: 0.11, range: 300, snd: 'sniper', scope: true, vm: [0.2, -0.24, -0.6],
     desc: 'Long distance relationship. Right-click to scope.' },
+  { id: 'lmg', name: 'Lawnmower', kind: 'LMG', cost: 40000, dmg: 22, head: 2.5, rate: 0.068, mag: 100, reload: 4.2,
+    spread: 0.05, auto: true, pellets: 1, recoil: 0.013, range: 180, snd: 'lmg', vm: [0.2, -0.25, -0.62],
+    desc: 'A hundred rounds and no plan. Hold the button and mow the lawn.' },
+  { id: 'launcher', name: 'Party Cannon', kind: 'Launcher', cost: 120000, dmg: 60, head: 1.5, rate: 0.9, mag: 4, reload: 2.6,
+    spread: 0.008, auto: false, pellets: 1, recoil: 0.12, range: 220, snd: 'launcher', splash: { r: 5, dmg: 170 }, vm: [0.2, -0.24, -0.6],
+    desc: 'Fires a gift-wrapped rocket. Five metres of surprise on impact.' },
   { id: 'rail', name: 'Unplugged', kind: 'Railgun', cost: 250000, dmg: 220, head: 2, rate: 0.7, mag: 4, reload: 2.0,
     spread: 0.004, auto: false, pellets: 1, recoil: 0.07, range: 400, snd: 'rail', pierceAll: true, vm: [0.2, -0.24, -0.6],
     desc: 'Goes through walls, bots, and the terms of service. It is not plugged in.' },
 ];
+for (const w of WEAPONS) w.cost *= 2;
+// small credit multiplier per gun: pricier guns pay a little more per kill
+const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, sniper: 1.25, lmg: 1.3, launcher: 1.35, rail: 1.5 };
+for (const w of WEAPONS) w.pay = WEAPON_PAY[w.id] || 1;
 const WEAPON_BY_ID = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
 
 /* ---------------- cheat modules + upgrade trees ---------------- */
@@ -38,6 +51,13 @@ const MODULES = [
   { id: 'pa', name: 'PLOT ARMOR', kind: 'Godmode', color: '#7aa2ff', glyph: 'shield', blurb: 'The main character never dies in act one.' },
   { id: 'mn', name: 'MONEY GLITCH', kind: 'Credit hacks', color: '#4ade80', glyph: 'coin', blurb: 'Make the number go up faster.' },
   { id: 'lg', name: 'LAG SWITCH', kind: 'Server tricks', color: '#f472b6', glyph: 'wifi', blurb: 'Their ping is your problem no longer.' },
+  { id: 'ks', name: 'KILLSTREAK.EXE', kind: 'Streak rewards', color: '#ff7a3d', glyph: 'star', blurb: 'Kill enough bots in a row and the sky helps out.' },
+  { id: 'so', name: 'SOCIAL HACK', kind: 'Chat & lobby tricks', color: '#b8f55a', glyph: 'chat', blurb: 'Why beat the lobby when you can manage it?' },
+  { id: 'gs', name: 'GUNSMITH', kind: 'Weapon mods', color: '#e0a15c', glyph: 'wrench', blurb: 'Same guns. Very different bullets.' },
+  { id: 'ch', name: 'CHRONO', kind: 'Time tricks', color: '#a78bfa', glyph: 'clock', blurb: 'The server clock is more of a guideline.' },
+  { id: 'in', name: 'INSIDER', kind: 'Economy hacks', color: '#facc15', glyph: 'chart', blurb: 'Money that never touches a scoreboard.' },
+  { id: 'gh', name: 'GHOSTWARE', kind: 'Anti-anticheat', color: '#8fb3ff', glyph: 'ghost', blurb: 'BotGuard cannot ban what it cannot see.', stealth: true },
+  { id: 'sp', name: 'SPOOFER', kind: 'Ban protection', color: '#e8e8f0', glyph: 'mask', blurb: 'For when BotGuard sees it anyway.', stealth: true },
 ];
 const MODULE_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]));
 
@@ -108,7 +128,7 @@ const UPGRADES = [
   { id: 'mn5', mod: 'mn', x: 2, y: 2, cost: 7500, req: ['mn3'], name: 'Salt Mine', desc: 'Angry chat drops twice the salt.' },
   { id: 'mn6', mod: 'mn', x: 0, y: 3, cost: 48000, req: ['mn4'], name: 'Decimal Shift', desc: 'All credits ×2.' },
   { id: 'mn7', mod: 'mn', x: 2, y: 3, cost: 30000, req: ['mn5'], name: 'AFK Farm', desc: 'Press F and the cheat plays for you. Matches queue up on their own.' },
-  { id: 'mn8', mod: 'mn', x: 1, y: 4, cost: 280000, req: ['mn6', 'mn7'], name: 'Money Printer', desc: 'All credits ×3 on top of everything else.' },
+  { id: 'mn8', mod: 'mn', x: 1, y: 4, cost: 280000, req: ['mn6', 'mn7'], name: 'Money Printer', desc: 'All credits ×2 on top of everything else.' },
   // LAG SWITCH
   { id: 'lg1', mod: 'lg', x: 1, y: 0, cost: 180, name: 'Packet Loss', desc: 'Bots aim 35% worse.' },
   { id: 'lg2', mod: 'lg', x: 0, y: 1, cost: 700, req: ['lg1'], name: 'Rubber Band', desc: 'Bots move 35% slower.' },
@@ -117,7 +137,75 @@ const UPGRADES = [
   { id: 'lg5', mod: 'lg', x: 2, y: 2, cost: 24000, req: ['lg3'], name: 'Server Flood', desc: '+4 more bots in every lobby.' },
   { id: 'lg6', mod: 'lg', x: 2, y: 3, cost: 42000, req: ['lg5'], name: 'Magnet', desc: 'Bots respawn near you and come straight at you.' },
   { id: 'lg7', mod: 'lg', x: 0, y: 3, cost: 75000, req: ['lg4'], name: 'Desync', desc: 'Bot bullets almost never connect.' },
+  // KILLSTREAK.EXE
+  { id: 'ks1', mod: 'ks', x: 1, y: 0, cost: 1500, name: 'Recon Drone', desc: 'A 3-kill streak launches a drone: every enemy glows and shows on a radar for 12 s.' },
+  { id: 'ks2', mod: 'ks', x: 0, y: 1, cost: 4000, req: ['ks1'], name: 'Care Package', desc: 'Every 5 kills in a streak: full health and a crate worth 4 kills of credits.' },
+  { id: 'ks3', mod: 'ks', x: 2, y: 1, cost: 8000, req: ['ks1'], name: 'Airstrike', desc: 'Every 8 kills in a streak, jets flatten everything within 9 m of your crosshair.' },
+  { id: 'ks4', mod: 'ks', x: 0, y: 2, cost: 18000, req: ['ks2'], name: 'Hardline', desc: 'Dying only halves your streak instead of resetting it.' },
+  { id: 'ks5', mod: 'ks', x: 2, y: 2, cost: 55000, req: ['ks3'], name: 'Orbital Laser', desc: 'Press X: a laser from space deletes everything within 6 m of your aim. 20 s cooldown.' },
+  { id: 'ks6', mod: 'ks', x: 1, y: 3, cost: 350000, req: ['ks4', 'ks5'], name: 'Ctrl+Alt+Delete', desc: 'A 25-kill streak deletes every enemy in the lobby at once. Each one pays double.' },
+  // SOCIAL HACK
+  { id: 'so1', mod: 'so', x: 1, y: 0, cost: 600, name: 'Proxy Chain', desc: 'The lobby gets suspicious 35% slower.' },
+  { id: 'so2', mod: 'so', x: 0, y: 1, cost: 1800, req: ['so1'], name: 'Salt Harvester', desc: 'Angry chat drops 50% more salt.' },
+  { id: 'so3', mod: 'so', x: 2, y: 1, cost: 5000, req: ['so1'], name: 'Fake Admin', desc: 'Press G to kick the angriest enemy from the server. Pays double a kill. 15 s cooldown.' },
+  { id: 'so4', mod: 'so', x: 0, y: 2, cost: 9000, req: ['so2'], name: 'Ragebait', desc: 'Lobbies start 40% suspicious, and every rage quit drops 6 salt.' },
+  { id: 'so5', mod: 'so', x: 2, y: 2, cost: 20000, req: ['so3'], name: 'Bounty Board', desc: 'One enemy always has a bounty on its head worth 5× a normal kill.' },
+  { id: 'so6', mod: 'so', x: 1, y: 3, cost: 120000, req: ['so4', 'so5'], name: 'Clip Farming', desc: 'At the end of a match, every salt you earned also pays 1 kill of credits.' },
+  // GUNSMITH
+  { id: 'gs1', mod: 'gs', x: 1, y: 0, cost: 500, name: 'Hot Loads', desc: 'Every gun deals 20% more damage.' },
+  { id: 'gs2', mod: 'gs', x: 0, y: 1, cost: 2500, req: ['gs1'], name: 'Hollow Points', desc: 'Headshots deal 50% more damage.' },
+  { id: 'gs3', mod: 'gs', x: 2, y: 1, cost: 3500, req: ['gs1'], name: 'Vampire Rounds', desc: 'Heal 3 HP for every bullet that hits.' },
+  { id: 'gs4', mod: 'gs', x: 0, y: 2, cost: 20000, req: ['gs2'], name: 'Explosive Rounds', desc: 'Every hit pops a 2.5 m blast for 40 damage.' },
+  { id: 'gs5', mod: 'gs', x: 2, y: 2, cost: 16000, req: ['gs3'], name: 'Ricochet', desc: 'Shots that hit a wall bounce once toward the nearest bot within 15 m.' },
+  { id: 'gs6', mod: 'gs', x: 1, y: 3, cost: 80000, req: ['gs4', 'gs5'], name: 'Chain Lightning', desc: 'Kills arc to the 2 nearest bots for 120 damage each.' },
+  // CHRONO
+  { id: 'ch1', mod: 'ch', x: 1, y: 0, cost: 700, name: 'Quick Hands', desc: 'Reloads and weapon swaps are 30% faster.' },
+  { id: 'ch2', mod: 'ch', x: 0, y: 1, cost: 3000, req: ['ch1'], name: 'Bullet Time', desc: 'Press V: every bot moves and shoots at 30% speed for 5 s. 25 s cooldown.' },
+  { id: 'ch3', mod: 'ch', x: 2, y: 1, cost: 12000, req: ['ch1'], name: 'Rewind', desc: 'Once per match, a hit that would kill you rewinds you 3 s instead, at full health.' },
+  { id: 'ch4', mod: 'ch', x: 0, y: 2, cost: 15000, req: ['ch2'], name: 'Matrix Mode', desc: 'Bullet Time lasts 8 s and recharges in 15 s.' },
+  { id: 'ch5', mod: 'ch', x: 1, y: 3, cost: 60000, req: ['ch3', 'ch4'], name: 'Time Thief', desc: 'Every kill adds 1 s to the match clock, up to 60 s.' },
+  // INSIDER
+  { id: 'in1', mod: 'in', x: 1, y: 0, cost: 400, name: 'Loot Drops', desc: 'Bots drop credit chips worth half a kill. Walk over them to collect.' },
+  { id: 'in2', mod: 'in', x: 0, y: 1, cost: 2000, req: ['in1'], name: 'Magnet Pockets', desc: 'Pick up credit chips from 10 m away.' },
+  { id: 'in3', mod: 'in', x: 2, y: 1, cost: 6000, req: ['in1'], name: 'Interest', desc: 'After every match, earn 2% of your wallet (up to 20 kills of that lobby).' },
+  { id: 'in4', mod: 'in', x: 0, y: 2, cost: 20000, req: ['in2'], name: 'Sponsor Deal', desc: 'Win bonuses pay triple.' },
+  { id: 'in5', mod: 'in', x: 1, y: 3, cost: 70000, req: ['in3', 'in4'], name: 'Insider Trading', desc: 'Contracts pay double.' },
+  // GHOSTWARE
+  { id: 'gh1', mod: 'gh', x: 1, y: 0, cost: 800, name: 'Signature Scrambler', desc: 'BotGuard scans find 30% less.' },
+  { id: 'gh2', mod: 'gh', x: 0, y: 1, cost: 2500, req: ['gh1'], name: 'Humanizer', desc: 'Snaps, spins, wall kills and abilities raise detection 50% less.' },
+  { id: 'gh3', mod: 'gh', x: 2, y: 1, cost: 4000, req: ['gh1'], name: 'Kernel Mode', desc: 'BotGuard scans you half as often.' },
+  { id: 'gh4', mod: 'gh', x: 0, y: 2, cost: 9000, req: ['gh2'], name: 'Panic Key', desc: 'Press P to unload every cheat at once, and P again to reload. Unloaded cheats cannot be detected.' },
+  { id: 'gh5', mod: 'gh', x: 2, y: 2, cost: 12000, req: ['gh3'], name: 'Stream Proof', desc: 'Spectating admins cannot see your overlays, so watching you no longer doubles detection.' },
+  { id: 'gh6', mod: 'gh', x: 1, y: 3, cost: 40000, req: ['gh4', 'gh5'], name: 'Polymorphic Build', desc: 'Scans find 40% less again, and detection cools twice as fast after each match.' },
+  { id: 'gh7', mod: 'gh', x: 1, y: 4, cost: 200000, req: ['gh6'], name: 'Ring -1', desc: 'Runs below the anticheat. Scans find nothing at all. Only obvious plays can flag you.' },
+  // SPOOFER
+  { id: 'sp1', mod: 'sp', x: 1, y: 0, cost: 1200, name: 'Report Shredder', desc: 'Half of all reports against you go missing. Admins show up less.' },
+  { id: 'sp2', mod: 'sp', x: 0, y: 1, cost: 6000, req: ['sp1'], name: 'Admin Bribe', desc: 'When an admin joins, 10% of this match\'s credits send them back to AFK.' },
+  { id: 'sp3', mod: 'sp', x: 2, y: 1, cost: 15000, req: ['sp1'], name: 'HWID Spoofer', desc: 'Bans no longer fine your wallet. You still lose that match\'s credits.' },
+  { id: 'sp4', mod: 'sp', x: 2, y: 2, cost: 45000, req: ['sp3'], name: 'Alt Account', desc: 'After a ban, detection resets to 0% instead of 40%.' },
+  { id: 'sp5', mod: 'sp', x: 1, y: 3, cost: 90000, req: ['sp2', 'sp4'], name: 'Appeal Bot', desc: 'Once per match, a ban is appealed automatically and detection drops to 60%.' },
 ];
+// balance pass: cheats cost 2.5x what they used to, so the early game takes a few matches per cheat
+for (const u of UPGRADES) u.cost = Math.round(u.cost * 2.5 / 10) * 10;
+// detection risk per cheat: how much each one adds to every BotGuard scan while it's injected and on
+const UPGRADE_RISK = {
+  aim1: 1, aim2: 1, aim3: 1, aim4: 2, aim5: 2, aim6: 3, aim7: 3, aim8: 5,
+  esp1: 1, esp2: 0.5, esp3: 0.5, esp4: 0.5, esp5: 0.5, esp6: 1, esp7: 1,
+  trg1: 1, trg2: 1, trg3: 1, trg4: 2, trg5: 0.5, trg6: 3,
+  hb1: 1, hb2: 1, hb3: 2, hb4: 3, hb5: 4,
+  st1: 0.5, st2: 1, st3: 2, st4: 1, st5: 3,
+  mv1: 1, mv2: 1, mv3: 1, mv4: 2, mv5: 3, mv6: 4,
+  am1: 0.5, am2: 0.5, am3: 2, am4: 2, am5: 3, am6: 3, am7: 3,
+  pa1: 1, pa2: 1, pa3: 2, pa4: 3, pa5: 2, pa6: 5,
+  mn1: 0.5, mn2: 0.5, mn3: 0.5, mn4: 1, mn5: 0, mn6: 2, mn7: 1, mn8: 3,
+  lg1: 1, lg2: 1, lg3: 1, lg4: 3, lg5: 2, lg6: 2, lg7: 4,
+  ks1: 1, ks2: 1, ks3: 2, ks4: 1, ks5: 3, ks6: 4,
+  so1: 0, so2: 0, so3: 2, so4: 0, so5: 1, so6: 0,
+  gs1: 1, gs2: 1, gs3: 1, gs4: 2, gs5: 2, gs6: 3,
+  ch1: 0.5, ch2: 2, ch3: 2, ch4: 2, ch5: 2,
+  in1: 0.5, in2: 0.5, in3: 0, in4: 0, in5: 0,
+};
+for (const u of UPGRADES) u.risk = UPGRADE_RISK[u.id] || 0;
 const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 
 /* ---------------- cosmetics (bought with salt) ---------------- */
@@ -135,6 +223,14 @@ const SKINS = [
   { id: 'rgb', name: 'Gamer RGB', cost: 600, c0: '#ffffff', c1: '#222222', pat: 5, spec: 0.6 },
   { id: 'glitch', name: 'Glitch', cost: 900, c0: '#9b5cff', c1: '#00e5ff', pat: 6, spec: 0.3 },
   { id: 'salt', name: 'Pure Salt', cost: 1500, c0: '#f4f7fb', c1: '#c8dbef', pat: 13, spec: 1.2 },
+  { id: 'zebra', name: 'Zebra', cost: 80, c0: '#f2f2f2', c1: '#141414', pat: 3, spec: 0.3 },
+  { id: 'lava', name: 'Lava Lamp', cost: 140, c0: '#ff5a1f', c1: '#5a0d0d', pat: 4, spec: 0.6 },
+  { id: 'mint', name: 'Mint Condition', cost: 180, c0: '#9ff5d0', c1: '#2f7d62', pat: 0, spec: 0.5 },
+  { id: 'circuit', name: 'Circuit Board', cost: 260, c0: '#1d6b3a', c1: '#c9a227', pat: 7, spec: 0.7 },
+  { id: 'candy', name: 'Candy Cane', cost: 320, c0: '#f5f5f5', c1: '#e0283c', pat: 3, spec: 0.5 },
+  { id: 'bandit', name: 'Bandit Pink', cost: 700, c0: '#ff4f9a', c1: '#2a1530', pat: 4, spec: 0.6 },
+  { id: 'chrome', name: 'Mirror Chrome', cost: 1100, c0: '#e6ebf2', c1: '#7d8896', pat: 0, spec: 1.8 },
+  { id: 'void', name: 'The Void', cost: 2500, c0: '#06060c', c1: '#3b1d6e', pat: 13, spec: 1.1 },
 ];
 const SKIN_BY_ID = Object.fromEntries(SKINS.map(s => [s.id, s]));
 
@@ -149,6 +245,9 @@ const XHAIRS = [
   { id: 'smile', name: 'Have A Nice Day', cost: 90 },
   { id: 'reticle', name: 'Range Finder', cost: 140 },
   { id: 'paw', name: 'Bandit Paw', cost: 300 },
+  { id: 'diamond', name: 'Diamond', cost: 60 },
+  { id: 'brackets', name: 'Brackets', cost: 80 },
+  { id: 'triangle', name: 'Triforce-ish', cost: 120 },
 ];
 const XHAIR_COLORS = ['#7cffb2', '#4df0ff', '#ffffff', '#ffe24d', '#ff5ccf', '#ff4d4d', '#9d7bff', '#ff9a3c'];
 
@@ -158,6 +257,8 @@ const KILLFX = [
   { id: 'pixels', name: 'Deleted', cost: 110, desc: 'Bots dissolve into glowing pixels.' },
   { id: 'coins', name: 'Jackpot', cost: 220, desc: 'Bots burst into a shower of gold.' },
   { id: 'fireworks', name: 'Fireworks', cost: 420, desc: 'Sparks fly straight up. Very subtle.' },
+  { id: 'saltfx', name: 'Salt Shaker', cost: 300, desc: 'Bots crumble into a pile of salt. Fitting.' },
+  { id: 'banned', name: 'BANNED', cost: 650, desc: 'A big red BANNED stamp over every kill. The irony is free.' },
 ];
 
 /* ---------------- maps ---------------- */
@@ -206,11 +307,35 @@ function genMega() {
   return g.map(r => r.join(''));
 }
 
+function genMoon() {
+  const N = 34, c = (N - 1) / 2, g = [];
+  for (let r = 0; r < N; r++) {
+    const row = [];
+    for (let q = 0; q < N; q++) row.push(Math.hypot(q - c, (r - c) * 1.05) > 16 ? '#' : '.');
+    g.push(row);
+  }
+  const rnd = U.rng(1969);
+  const put = (q, r, ch) => { if (g[r] && g[r][q] === '.') g[r][q] = ch; };
+  // crater rims: rings of low rock
+  for (const [cq, cr, rad] of [[10, 10, 3], [23, 11, 2.5], [11, 23, 2.5], [23, 23, 3.2], [17, 6, 1.8], [6, 17, 1.8], [28, 17, 1.8], [17, 28, 1.8]]) {
+    for (let a = 0; a < TAU; a += 0.42) if (rnd() < 0.75) put(Math.round(cq + Math.cos(a) * rad), Math.round(cr + Math.sin(a) * rad), 'h');
+  }
+  for (let i = 0; i < 40; i++) { const q = 3 + Math.floor(rnd() * 28), r = 3 + Math.floor(rnd() * 28); put(q, r, rnd() < 0.5 ? 'c' : 'C'); }
+  // the base in the middle
+  for (let k = -2; k <= 2; k++) { put(17 + k, 15, 'K'); put(17 + k, 19, 'K'); }
+  put(15, 17, 'p'); put(19, 17, 'p');
+  for (let r = 1; r < N - 1; r++) { if (g[r][17] !== '#') g[r][17] = '.'; }
+  const spawns = [[17, 3], [17, 30], [3, 17], [30, 17], [8, 8], [26, 8], [8, 26], [26, 26], [13, 13], [21, 21], [13, 21], [21, 13], [5, 12], [28, 22], [12, 28], [22, 5]];
+  spawns.forEach(([q, r]) => { if (g[r][q] !== '#') g[r][q] = 'S'; });
+  g[17][17] = 'P';
+  return g.map(r => r.join(''));
+}
+
 const MAPS = [
   {
     id: 'closet', name: 'The Closet', mode: '1v1', blurb: 'A tiny aim room. One bot. Zero excuses.',
     bots: 1, cr: 10, time: 60, unlock: 0, wallH: 4.2,
-    bot: { dmg: 7, acc: 0.16, react: 0.95, fire: 0.62, speed: 3.5 },
+    bot: { dmg: 9, acc: 0.21, react: 0.85, fire: 0.6, speed: 3.6 },
     col: { floor: '#7b8494', wall: '#c9ced8', crate: '#d9822b', half: '#9aa0a8', pillar: '#b6bdc9', hedge: '#4d8b46', accent: '#3d7bd9' },
     pat: { floor: 1, wall: 1 },
     env: { zenith: '#3f6fc4', horizon: '#c9def2', sun: [-0.42, -0.82, -0.38], sunCol: '#fff1dc', sky: '#b7cbe6', gnd: '#6d6b66', fog: '#c9def2', fogDen: 0.010, stars: 0, clouds: 0.45 },
@@ -303,6 +428,33 @@ const MAPS = [
     props: 'warehouse',
   },
   {
+    id: 'servers', name: 'Server Farm', mode: 'FFA', blurb: 'Rows of humming racks. The admin left the door open. Ten bots.',
+    bots: 10, cr: 80, time: 95, unlock: 8000, wallH: 5,
+    bot: { dmg: 10, acc: 0.3, react: 0.58, fire: 0.44, speed: 4.25 },
+    col: { floor: '#2b313d', wall: '#3a4456', crate: '#2d3a4f', half: '#46536a', pillar: '#59657a', hedge: '#4d8b46', accent: '#3dff9e' },
+    pat: { floor: 12, wall: 9 },
+    env: { zenith: '#0b1626', horizon: '#1f4a55', sun: [0.2, -0.9, -0.3], sunCol: '#b8ffe0', sky: '#2c4a5a', gnd: '#20262f', fog: '#122630', fogDen: 0.018, stars: 0.3, clouds: 0 },
+    layout: [
+      '######################',
+      '#S..................S#',
+      '#.KK.KK.KK..KK.KK.KK.#',
+      '#.KK.KK.KK..KK.KK.KK.#',
+      '#....................#',
+      '#.c......p..p......c.#',
+      '#...hhh........hhh...#',
+      '#.KK.KK..C..C..KK.KK.#',
+      '#.KK.KK........KK.KK.#',
+      '#...hhh........hhh...#',
+      '#.c......p..p......c.#',
+      '#....................#',
+      '#.KK.KK.KK..KK.KK.KK.#',
+      '#.KK.KK.KK..KK.KK.KK.#',
+      '#S........P.........S#',
+      '######################',
+    ],
+    props: 'servers',
+  },
+  {
     id: 'roofs', name: 'Rooftops', mode: 'FFA', blurb: 'Sunset over the city. Twelve bots, nowhere to hide.',
     bots: 12, cr: 100, time: 105, unlock: 15000, wallH: 2.2,
     bot: { dmg: 11, acc: 0.31, react: 0.55, fire: 0.42, speed: 4.3 },
@@ -351,7 +503,18 @@ const MAPS = [
     layout: genMega(),
     props: 'mega',
   },
+  {
+    id: 'moon', name: 'Moon Base', mode: 'FFA', blurb: 'Low gravity, forty bots, and nobody up here to read the reports.',
+    bots: 40, cr: 420, time: 130, unlock: 1200000, wallH: 4, grav: 0.42,
+    bot: { dmg: 14, acc: 0.38, react: 0.42, fire: 0.36, speed: 4.7 },
+    col: { floor: '#8d8f96', wall: '#c4c7cf', crate: '#d8dbe3', half: '#a9adb6', pillar: '#e6e8ee', hedge: '#4d8b46', accent: '#4dd4ff' },
+    pat: { floor: 14, wall: 1 },
+    env: { zenith: '#000000', horizon: '#141a2e', sun: [0.5, -0.6, -0.6], sunCol: '#ffffff', sky: '#1a2038', gnd: '#55575e', fog: '#0c1020', fogDen: 0.006, stars: 1, clouds: 0 },
+    layout: genMoon(),
+    props: 'moon',
+  },
 ];
+for (const m of MAPS) m.unlock *= 2;
 const MAP_BY_ID = Object.fromEntries(MAPS.map(m => [m.id, m]));
 
 /* ---------------- names & chat ---------------- */
@@ -364,6 +527,9 @@ const BOT_NAMES = [
   'Chill_Bill', 'Sweaty_Sven', 'Velvet_Thunder', 'Pogo', 'KnifeOnly_Ken', 'Unpaid_Intern', 'Recoil_Rick', 'Peanut',
   'Mango', 'Biscuit', 'Captain_Lag', 'Duck_Main', 'Sprocket', 'Gearbox_Gus', 'Firmware_Fay', 'Servo_Sal', 'Tin_Tim',
   'Dial_Up_Dan', 'Bluescreen', 'Ctrl_Z', 'Sudo_Sam', 'Patch_Notes', 'Hotfix', 'Beta_Bob',
+  'Cache_Miss', 'Overflow_Olga', 'Kernel_Panic', 'Segfault_Sid', 'Loading_Lou', 'Ping_Pong', 'Mouse_Pad', 'WASD_Wendy',
+  'Alt_Tab', 'Crouch_Spammer', 'NoScope_Noel', 'Spray_n_Pray', 'Lag_Comp', 'Hitreg_Hank', 'Tutorial_Tom', 'Captcha_Kid',
+  'Dumbbell_Dave', 'Boot_Loop', 'Rubber_Duck', 'Last_Patch', 'Dev_Null', 'Robo_Ron', 'Clip_It', 'Free_Trial',
 ];
 const PERSONAS = ['chill', 'salty', 'tryhard', 'troll', 'quiet', 'chill', 'salty'];
 
@@ -394,9 +560,43 @@ const CHAT = {
   respHi: ['hi', 'hey', 'hello', 'yo'],
   respHiSus: ['hello cheater', 'dont talk to me', 'no'],
   respOther: ['what', 'nobody asked', 'ok', '?', 'lol', 'who asked', 'cool story'],
-  join: ['hi', 'what did i miss', 'why is everyone mad', 'yo', 'who is the cheater', 'hello'],
+  join: ['hi', 'what did i miss', 'why is everyone mad', 'yo', 'who is the cheater', 'hello', 'oh no not this guy again', 'is it safe to join', 'why is the lobby on fire'],
+  kicked: ['WHO KICKED ME', 'since when is he admin', 'he kicked him??', 'abuse of power', 'the cheater is the ADMIN now?', 'this server is a dictatorship'],
+  strike: ['WHAT WAS THAT', 'did the sky just shoot me', 'AIRSTRIKE?? in this game?', 'there are no killstreaks in this mode', 'bro called in the air force'],
+  laser: ['A LASER FROM SPACE', 'what is that beam', 'orbital??', 'he has a satellite', 'i just got deleted from orbit'],
+  nuke: ['THE WHOLE SERVER DIED', 'did he just delete us', 'everyone died at once', 'what. just. happened.', 'i am calling the developers', 'ctrl alt delete??'],
+  bounty: ['why is there a price on my head', 'stop hunting me', 'i am not the bounty, he is', 'why does everyone want me dead'],
+  bossGreet: ['FEAR ME', 'i am the raid boss', 'bring it, tiny', 'i was trained on 10000 matches', 'you cannot aim. i can.'],
+  bossHurt: ['that tickles', 'ow', 'stop that', 'my health bar!', 'you will pay for that', 'minions, help!'],
+  bossDown: ['i... have been... patched out', 'impossible', 'tell my creators... i tried', 'gg i guess'],
+  gungame: ['why does he keep switching guns', 'he is speedrunning the arsenal', 'one more gun and he wins', 'STOP HIM BEFORE THE LAST GUN'],
+  headsOnly: ['headshots only and he never misses', 'every bullet in the head', 'he is not even aiming at bodies'],
+  moon: ['how is he jumping that high', 'moon gravity and aimbot is a crime', 'houston we have a cheater', 'one small step for cheaters'],
   botKill: ['nice', 'got him', 'lol', 'ty'],
 };
+
+/* ---------------- BotGuard anticheat + admins ---------------- */
+const DET_TIERS = [
+  { at: 0, name: 'UNDETECTED', color: '#5fe3a1' },
+  { at: 25, name: 'FLAGGED', color: '#ffe24d' },
+  { at: 50, name: 'MONITORED', color: '#ffa53c' },
+  { at: 75, name: 'UNDER REVIEW', color: '#ff5470' },
+  { at: 100, name: 'BANNED', color: '#ff2d55' },
+];
+const ADMIN_NAMES = ['mod_Greg', 'admin_Linda', 'SysOp_Dave', 'mod_Priya', 'xX_Admin_Xx', 'Moderator_Ken', 'root_Rosa', 'mod_Theo'];
+const ADMIN_LINES = {
+  join: ['ok what is going on in here', 'got 40 reports, spectating', 'who is the problem', 'reports came in. watching.', 'admin here. play normal.', 'i was eating dinner. this better be good'],
+  watching: ['hmm', 'still watching', 'interesting', 'keep playing', 'taking notes', 'recording'],
+  clean: ['looks legit to me', 'nothing here, back to dinner', 'he is just good. stop reporting', 'false alarm. closing the ticket', 'cant find anything. gg'],
+  kick: ['yeah no. kicked.', 'that was not legit. bye', 'kicking for "suspicious gameplay"', 'enough of that. kicked'],
+  bribe: ['...ok i saw nothing', 'transfer received. going afk', 'i am suddenly very busy', 'nice doing business'],
+};
+CHAT.adminCheer = ['FINALLY AN ADMIN', 'admin spectate him!!', 'ADMIN HE IS RIGHT THERE', 'ban him ban him ban him', 'admin pls'];
+CHAT.adminClean = ['WHAT', 'are you blind??', 'the admin is in on it', 'unbelievable', 'he bribed you didnt he'];
+CHAT.adminKick = ['GET OUT', 'JUSTICE', 'finally', 'bye cheater', 'the system works'];
+CHAT.banned = ['BANNED LMAO', 'ez ban', 'BotGuard actually works??', 'press F', 'enjoy your new account'];
+CHAT.jumpshot = ['mid air??', 'he jumped and hit that', 'bro is doing tricks', 'flying headshot lmao', 'show off', 'how do you aim in the air', 'parkour aimbot'];
+CHAT.panic = ['wait he stopped hitting everything', 'oh now he misses?', 'he turned it off when the admin came lol', 'suddenly legit'];
 
 const SERVER_LINES = [
   'Thanks for your report. An admin will review it shortly.',
@@ -404,22 +604,37 @@ const SERVER_LINES = [
   'Report inbox is full. Please try again later.',
   'Admin status: AFK (last seen {d} days ago).',
   'Vote kick failed: needs an admin to confirm.',
-  'Anti-cheat module not found. Continuing anyway.',
+  'BotGuard scan queued. Please continue playing normally.',
   'Your report was forwarded to /dev/null.',
+  'Admin vacation mode: enabled until further notice.',
+  'Ban hammer not found. Checked under the couch.',
+  'Reports are now processed in order of how funny they are.',
+  'BotGuard signature database updated. Somewhat.',
+  'Server tip: if you are losing, try not losing.',
 ];
 
 const BANDIT_QUIPS = {
   idle: [
     "First one's cheap. They're always cheap at first.",
-    "Everything here is 100% undetected. There's nothing on those servers to detect it.",
+    "Everything here is 100% undetected. Mostly. Some of it. Check the risk dots.",
     'Bigger heads, easier hits. That is just science.',
     "Don't tell anyone where you got this.",
     "Refunds? Never heard of 'em.",
     "Chat's mad? Good. Salt sells in the Locker.",
-    "The admin's been AFK since the servers went up.",
+    "Admins only log in when the reports pile up. So don't let them pile up.",
     "You're doing great, champ. Statistically.",
     "I'm not a raccoon. I'm a small business.",
     'Paid in credits. No questions asked.',
+    "BotGuard showed up. Don't panic. Well, press P if you have it.",
+    'Every cheat makes noise. Run fewer, or run quieter.',
+    'Flagged? Play a match with everything off. Lay low.',
+    'GHOSTWARE is the best money you will ever spend. Says the guy selling it.',
+    'Contracts on the board, kid. Honest work. Sort of.',
+    'Ever wanted to call in an airstrike on a bot? Asking for a friend.',
+    "Social engineering is just networking with extra steps.",
+    'The moon has no admin either. I checked.',
+    "Gun game's a great way to try stuff before you buy it. Then buy it.",
+    'Raid Boss? Big bot, big wallet. Bring a big gun.',
   ],
   broke: ["Come back with more credits. I don't do layaway.", 'Window shopping is free. Everything else costs.'],
   bought: ['Pleasure doing business.', "Injected. Don't ask how.", "Ooh, that one's my favorite.", 'Enjoy. Responsibly. Or not.', 'Another satisfied customer.'],
@@ -437,10 +652,13 @@ const SALT_PER_TIER = [0, 1, 2, 4, 7];
 
 /* ---------------- match modes ---------------- */
 const MODES = [
-  { id: 'ffa', name: 'Free-for-all', tag: 'FFA', blurb: 'Everyone shoots everyone. Bots fight each other too.', pay: 1, win: 5 },
-  { id: 'squad', name: 'Solo vs Squad', tag: '1vN', blurb: 'The whole lobby hunts you as one team. They share your position and keep respawning.', pay: 1.5, win: 8, botAcc: 0.85, respawn: 3.4 },
-  { id: 'clutch', name: 'Clutch Rounds', tag: 'Rounds', blurb: 'One life per round, no respawns. Wipe the squad to take the round. First to 5.', pay: 1.3, win: 6, botAcc: 0.8, roundBonus: 1.5, rounds: 5, roundTime: 45 },
-  { id: 'tdm', name: 'Team Deathmatch', tag: 'TDM', blurb: 'You and bot teammates against a bot team. Every teammate kill pays you a 25% cut.', pay: 1, win: 6, assist: 0.25 },
+  { id: 'ffa', name: 'Free-for-all', tag: 'FFA', blurb: 'Everyone shoots everyone. Bots fight each other too.', pay: 1, win: 5, ffa: true },
+  { id: 'squad', name: 'Solo vs Squad', tag: '1vN', blurb: 'The whole lobby hunts you as one team. They share your position and keep respawning.', pay: 1.5, win: 8, botAcc: 0.85, respawn: 3.4 , cost: 600 },
+  { id: 'tdm', name: 'Team Deathmatch', tag: 'TDM', blurb: 'You and bot teammates against a bot team. Every teammate kill pays you a 25% cut.', pay: 1, win: 6, assist: 0.25 , cost: 2000 },
+  { id: 'heads', name: 'Heads Only', tag: 'HS only', blurb: 'Body shots do nothing. Only headshots count. Bots play by the same rule.', pay: 1.8, win: 6, ffa: true , cost: 5000 },
+  { id: 'clutch', name: 'Clutch Rounds', tag: 'Rounds', blurb: 'One life per round, no respawns. Wipe the squad to take the round. First to 5.', pay: 1.3, win: 6, botAcc: 0.8, roundBonus: 1.5, rounds: 5, roundTime: 45 , cost: 12000 },
+  { id: 'gungame', name: 'Hand-Me-Downs', tag: 'Gun game', blurb: 'Every kill swaps your gun for the next one, owned or not. A kill with the last gun wins.', pay: 1.2, win: 8, ffa: true , cost: 25000 },
+  { id: 'boss', name: 'Raid Boss', tag: 'Boss', blurb: 'A giant bot with a giant health bar and a few minions. Take it down before time runs out.', pay: 1, win: 14, botAcc: 0.9 , cost: 60000 },
 ];
 const MODE_BY_ID = Object.fromEntries(MODES.map(m => [m.id, m]));
 const TEAM_ACCENTS = {
@@ -450,6 +668,7 @@ const TEAM_ACCENTS = {
 // how a lobby splits up in each mode: bots on your side, bots against you (extra bots always join the enemy)
 function lineup(map, modeId, extraBots) {
   const extra = extraBots || 0;
+  if (modeId === 'boss') return { allies: 0, foes: 1 + Math.ceil(map.bots / 2) + extra };
   if (modeId === 'tdm') {
     const allies = Math.ceil((map.bots + 1) / 2) - 1;
     return { allies, foes: map.bots - allies + extra };
@@ -458,7 +677,9 @@ function lineup(map, modeId, extraBots) {
 }
 function matchupLabel(map, modeId, extraBots) {
   const l = lineup(map, modeId, extraBots);
-  if (modeId === 'ffa') return l.foes === 1 ? '1v1' : 'FFA';
+  const md = MODE_BY_ID[modeId];
+  if (modeId === 'boss') return 'BOSS+' + (l.foes - 1);
+  if (md && md.ffa) return l.foes === 1 ? '1v1' : md.id === 'ffa' ? 'FFA' : md.tag.toUpperCase();
   if (modeId === 'tdm') return (l.allies + 1) + 'v' + l.foes;
   return '1v' + l.foes;
 }
@@ -475,3 +696,85 @@ Object.assign(CHAT, {
   allySus: ['ngl he might be cheating... but he is on our team', 'report? nah he is carrying', 'i saw nothing', 'he is just good, leave him alone', 'who cares, we are winning'],
   foeTeam: ['their team has a cheater', 'blue has walls', 'switch teams', 'report the guy on blue', 'kick the blue guy'],
 });
+
+// the gun order for Hand-Me-Downs: big and silly first, the humble pistol last
+const GUNGAME_ORDER = ['launcher', 'rail', 'lmg', 'rifle', 'shotgun', 'smg', 'sniper', 'revolver', 'pistol'];
+
+/* ---------------- contracts: Bandit's odd jobs ---------------- */
+// stat: which tracked event counts. max: track the best single-match value instead of a running total.
+const CONTRACTS = [
+  { id: 'kills', text: 'Get {n} kills', stat: 'kill', base: 30, pay: 1 },
+  { id: 'hs', text: 'Get {n} headshot kills', stat: 'hs', base: 15, pay: 1.2 },
+  { id: 'wall', text: 'Get {n} kills through walls', stat: 'wall', base: 8, pay: 1.6, req: () => Shop.S.wallbang || Save.data.weapons.rail },
+  { id: 'multi', text: 'Get {n} multi-kills', stat: 'multi', base: 5, pay: 1.5 },
+  { id: 'jump', text: 'Get {n} jump-shot kills', stat: 'jump', base: 5, pay: 1.7 },
+  { id: 'style', text: 'Score {n} style points in one match', stat: 'style', base: 400, pay: 1.4, max: true },
+  { id: 'streak', text: 'Reach a {n}-kill streak in one match', stat: 'streak', base: 8, pay: 1.8, max: true },
+  { id: 'wins', text: 'Win {n} matches', stat: 'win', base: 2, pay: 3 },
+  { id: 'salt', text: 'Earn {n} salt', stat: 'salt', base: 40, pay: 1.2 },
+  { id: 'rq', text: 'Make {n} bots rage quit', stat: 'ragequit', base: 3, pay: 2 },
+  { id: 'ez', text: 'Type "ez" in chat {n} times', stat: 'ez', base: 3, pay: 0.8, fixed: true },
+  { id: 'weapon', text: 'Get {n} kills with the {a}', stat: 'weapon', base: 20, pay: 1.3, arg: () => U.pick(WEAPONS.filter(w => Save.data.weapons[w.id])).id, label: a => (WEAPON_BY_ID[a] || {}).name },
+  { id: 'map', text: 'Play {n} matches on {a}', stat: 'map', base: 2, pay: 1.5, fixed: true, arg: () => U.pick(MAPS.filter(m => Save.data.maps[m.id])).id, label: a => (MAP_BY_ID[a] || {}).name },
+  { id: 'mode', text: 'Win a {a} match', stat: 'modewin', base: 1, pay: 5, fixed: true, arg: () => U.pick(MODES.filter(m => m.id !== 'ffa' && Save.data.modes[m.id]).map(m => m.id)), label: a => (MODE_BY_ID[a] || {}).name, req: () => MODES.some(m => m.id !== 'ffa' && Save.data.modes[m.id]) },
+  { id: 'calls', text: 'Call in {n} killstreak rewards', stat: 'streakcall', base: 4, pay: 2, req: () => Shop.S.recon },
+  { id: 'bounty', text: 'Claim {n} bounties', stat: 'bounty', base: 4, pay: 2, req: () => Shop.S.bounty },
+  { id: 'kick', text: 'Kick {n} bots as "admin"', stat: 'kick', base: 4, pay: 1.5, req: () => Shop.S.admin },
+];
+const CONTRACT_BY_ID = Object.fromEntries(CONTRACTS.map(c => [c.id, c]));
+
+/* ---------------- ranks ---------------- */
+const RANKS = [
+  'Unranked', 'Wood Bot', 'Plastic I', 'Plastic II', 'Plastic III', 'Aluminum I', 'Aluminum II', 'Steel I', 'Steel II', 'Titanium',
+  'Chrome', 'Carbon', 'Plasma', 'Quantum', 'Overclocked', 'Admin Material', 'Totally Legit', 'Legit Legend', 'Server Owner',
+];
+const RANK_XP = RANKS.map((_, i) => i === 0 ? 0 : Math.round(60 * Math.pow(1.62, i - 1)));
+
+/* ---------------- achievements ---------------- */
+const ACH = (id, name, desc, salt, test) => ({ id, name, desc, salt, test });
+const ACHIEVEMENTS = [
+  ACH('jump25', 'Frequent Flyer', 'Get 25 jump-shot kills.', 20, s => (s.jumpKills || 0) >= 25),
+  ACH('noscope', 'Who Needs A Scope', 'Get 10 no-scope kills with the LDR-50.', 25, s => (s.noScopes || 0) >= 10),
+  ACH('stylish', 'Totally Stylish', 'Reach the top style rank in a match.', 40, s => (s.topStyleRank || 0) >= 6),
+  ACH('ban1', 'Banned', 'Get banned by BotGuard. It happens.', 10, s => (s.bans || 0) >= 1),
+  ACH('ghost', 'Never Seen', 'Win a match running 30+ risk worth of cheats without leaving Undetected.', 60, s => (s.ghostWins || 0) >= 1),
+  ACH('admin', 'Looks Legit To Me', 'Survive 10 admin spectates.', 40, s => (s.adminsSurvived || 0) >= 10),
+  ACH('bribe', 'Business Expense', 'Bribe an admin.', 15, s => (s.bribes || 0) >= 1),
+  ACH('first', 'First Blood', 'Get your first kill.', 5, s => s.kills >= 1),
+  ACH('k100', 'Warmed Up', 'Get 100 kills.', 10, s => s.kills >= 100),
+  ACH('k1k', 'Bot Recycler', 'Get 1,000 kills.', 25, s => s.kills >= 1000),
+  ACH('k10k', 'Scrap Yard', 'Get 10,000 kills.', 60, s => s.kills >= 10000),
+  ACH('k100k', 'Extinction Event', 'Get 100,000 kills.', 200, s => s.kills >= 100000),
+  ACH('hs500', 'Melon Farmer', 'Get 500 headshot kills.', 20, s => s.hs >= 500),
+  ACH('w1', 'Winner Winner', 'Win a match.', 5, s => s.wins >= 1),
+  ACH('w50', 'Habitual', 'Win 50 matches.', 30, s => s.wins >= 50),
+  ACH('w250', 'Can Not Stop', 'Win 250 matches.', 80, s => s.wins >= 250),
+  ACH('st10', 'On Fire', 'Reach a 10-kill streak.', 10, s => s.bestStreak >= 10),
+  ACH('st50', 'Unstoppable', 'Reach a 50-kill streak.', 40, s => s.bestStreak >= 50),
+  ACH('st200', 'It Is Not Even Close', 'Reach a 200-kill streak.', 100, s => s.bestStreak >= 200),
+  ACH('cr1m', 'Millionaire', 'Earn 1,000,000 credits in total.', 40, s => s.crEarned >= 1e6),
+  ACH('cr1b', 'Billionaire', 'Earn 1,000,000,000 credits in total.', 150, s => s.crEarned >= 1e9),
+  ACH('spend', 'Big Spender', 'Spend 500,000 credits at Bandit\'s.', 40, s => s.crSpent >= 5e5),
+  ACH('salt1k', 'Salt Of The Earth', 'Collect 1,000 salt.', 30, s => s.saltEarned >= 1000),
+  ACH('rq', 'Uninstaller', 'Make 50 bots rage quit.', 30, s => s.ragequits >= 50),
+  ACH('rep', 'Most Reported', 'Collect 10,000 reports.', 40, s => s.reports >= 10000),
+  ACH('melt', 'Meltdown', 'Push lobby suspicion to 100%.', 15, s => s.peakSus >= 100),
+  ACH('squad', 'One Man Army', 'Win a Solo vs Squad match.', 20, s => (s.modeWins || {}).squad >= 1),
+  ACH('clutch', 'Clutch King', 'Win a Clutch Rounds series.', 20, s => (s.modeWins || {}).clutch >= 1),
+  ACH('tdm', 'Team Player', 'Win a Team Deathmatch.', 15, s => (s.modeWins || {}).tdm >= 1),
+  ACH('gg', 'Hand-Me-Up', 'Win a game of Hand-Me-Downs.', 20, s => (s.modeWins || {}).gungame >= 1),
+  ACH('heads', 'Neck Up', 'Win a Heads Only match.', 20, s => (s.modeWins || {}).heads >= 1),
+  ACH('boss', 'Giant Slayer', 'Take down a Raid Boss.', 30, s => (s.bosses || 0) >= 1),
+  ACH('boss10', 'Boss Rush', 'Take down 10 Raid Bosses.', 60, s => (s.bosses || 0) >= 10),
+  ACH('nuke', 'Ctrl+Alt+Deleted', 'Delete an entire lobby at once.', 80, s => (s.nukes || 0) >= 1),
+  ACH('kick', 'Power Trip', 'Kick 25 bots with Fake Admin.', 25, s => (s.kicks || 0) >= 25),
+  ACH('bounty', 'Bounty Hunter', 'Claim 25 bounties.', 25, s => (s.bounties || 0) >= 25),
+  ACH('jobs', 'Odd Jobs', 'Finish 10 contracts.', 25, s => (s.contracts || 0) >= 10),
+  ACH('jobs50', 'Contractor', 'Finish 50 contracts.', 80, s => (s.contracts || 0) >= 50),
+  ACH('hour', 'Touch Grass Later', 'Play for an hour.', 20, s => s.playTime >= 3600),
+  ACH('maps', 'World Tour', 'Unlock every lobby.', 60, () => MAPS.every(m => Save.data.maps[m.id])),
+  ACH('guns', 'Collector', 'Own every gun.', 50, () => WEAPONS.every(w => Save.data.weapons[w.id])),
+  ACH('cheats', 'Fully Loaded', 'Own every cheat Bandit sells.', 150, () => UPGRADES.every(u => Save.data.owned[u.id])),
+  ACH('smurf', 'New Account, Who Dis', 'Start over on a fresh account.', 50, () => (Save.data.smurf || 0) >= 1),
+  ACH('rank', 'Admin Material', 'Reach the Admin Material rank.', 60, s => (s.xp || 0) >= RANK_XP[15]),
+];

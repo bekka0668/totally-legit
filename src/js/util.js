@@ -179,6 +179,7 @@ const M4 = {
     o[12] = p[0]; o[13] = p[1]; o[14] = p[2]; o[15] = 1;
     return o;
   },
+  scaleU(o, m, k) { if (o !== m) o.set(m); for (let i = 0; i < 12; i++) o[i] *= k; return o; },
   transformPoint(o, m, p) {
     const x = p[0], y = p[1], z = p[2];
     o[0] = m[0] * x + m[4] * y + m[8] * z + m[12];

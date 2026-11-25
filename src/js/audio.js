@@ -85,6 +85,14 @@ const SFX = {
       case 'rail':
         this.tn(t, 0.35, { f: 2600, f2: 160, type: 'sawtooth', g: 0.16 * v, pan }); this.tn(t, 0.45, { f: 130, f2: 40, g: 0.8 * v, pan });
         this.nz(t, 0.4, { type: 'bandpass', f: 1800, f2: 260, q: 2, g: 0.5 * v, pan }); break;
+      case 'revolver':
+        this.nz(t, 0.3, { f: lp(3000), g: 0.75 * v, pan }); this.tn(t, 0.14, { f: 120, f2: 40, g: 0.85 * v, pan });
+        this.nz(t, 0.04, { type: 'highpass', f: 3200, g: 0.32 * crack, pan }); break;
+      case 'lmg':
+        this.nz(t, 0.12, { f: lp(2800), g: 0.5 * v, pan }); this.tn(t, 0.08, { f: 120, f2: 45, g: 0.55 * v, pan });
+        this.nz(t, 0.02, { type: 'highpass', f: 3000, g: 0.18 * crack, pan }); break;
+      case 'launcher':
+        this.nz(t, 0.35, { type: 'bandpass', f: 900, f2: 300, q: 1.2, g: 0.6 * v, pan }); this.tn(t, 0.3, { f: 220, f2: 60, g: 0.5 * v, pan }); break;
       case 'bot':
         this.nz(t, 0.12, { f: lp(3000), g: 0.32 * v, pan }); this.tn(t, 0.07, { f: 170, f2: 60, g: 0.3 * v, pan }); break;
       default: // pistol

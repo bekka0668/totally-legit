@@ -15,6 +15,7 @@
       <div class="h-sus-bar"><i id="h-sus-fill"></i></div>
       <span id="h-sus-label" class="h-sus-label">CHILL</span>
     </div>
+    <div id="h-det" class="h-det"><span class="lbl">BotGuard</span><b id="h-det-val">0%</b><span id="h-det-tier" class="h-det-tier">UNDETECTED</span><span id="h-admin" class="h-admin" hidden></span><span id="h-panic" class="h-panic" hidden>CHEATS UNLOADED</span></div>
     <div id="h-afk" class="h-afk" hidden>AFK FARM ACTIVE · press F to take over</div>
     <div class="h-left">
       <div id="h-earn" class="h-earn">+0 CR</div>
@@ -22,6 +23,12 @@
       <div id="h-wm" class="h-wm"></div>
     </div>
     <div id="h-feed" class="h-feed" aria-live="polite"></div>
+    <div id="h-style" class="h-style" hidden>
+      <div class="hs-top"><b id="h-style-rank">D</b><div><span id="h-style-name">MID</span><em id="h-style-mult">×1.0</em></div></div>
+      <div class="hs-bar"><i id="h-style-fill"></i></div>
+      <div id="h-streak" class="hs-streak"></div>
+      <div id="h-style-feed" class="hs-feed"></div>
+    </div>
     <div class="h-chat">
       <div id="h-saltpop" class="h-saltpop"></div>
       <div id="h-chatlog" class="h-chatlog" aria-live="polite"></div>
@@ -69,6 +76,7 @@
         <button type="button" role="tab" data-tab="stats">Stats</button>
       </nav>
       <div class="wallet">
+        <button class="chip rank" id="w-rank-btn" type="button" data-tab="stats" title="Rank: earn XP from kills, wins and contracts"><i>RANK</i><b id="w-rank">Unranked</b></button>
         <div class="chip cr" title="Credits: earned from kills, spent on cheats, guns and lobbies"><i>CR</i><b id="w-cr">0</b></div>
         <div class="chip salt" title="Salt: dropped by angry chat, spent on cosmetics"><i>SALT</i><b id="w-salt">0</b></div>
         <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings">

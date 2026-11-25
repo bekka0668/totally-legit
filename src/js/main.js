@@ -199,6 +199,7 @@ window.TL_DEBUG = {
     for (const u of UPGRADES) Save.data.owned[u.id] = true;
     for (const m of MAPS) Save.data.maps[m.id] = true;
     for (const w of WEAPONS) Save.data.weapons[w.id] = true;
+    for (const m of MODES) Save.data.modes[m.id] = true;
     Shop.compute(); if (Game.mode === 'hub') Hub.render();
   },
   start(id, auto) { Save.data.maps[id] = true; Match.start(id, { auto: !!auto }); if (!auto) Match.begin(); },

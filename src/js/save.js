@@ -15,13 +15,14 @@ const Save = {
       xhair: { style: 'cross', color: '#7cffb2', size: 7, gap: 4, thick: 2, outline: true, dot: false },
       xhairs: { cross: true, dot: true },
       killfx: 'scrap', killfxs: { scrap: true },
-      maps: { closet: true }, lastMap: 'closet',
+      maps: { closet: true }, lastMap: 'closet', modes: { ffa: true }, mode: 'ffa',
       stats: {
         kills: 0, deaths: 0, hs: 0, matches: 0, wins: 0, crEarned: 0, crSpent: 0, saltEarned: 0, reports: 0,
         ragequits: 0, shots: 0, hits: 0, playTime: 0, bestStreak: 0, peakSus: 0, chatMsgs: 0, bestMatch: 0,
       },
       settings: { name: 'legit_player', sens: 1, fov: 74, vol: 0.7, quality: 1, dmgNums: true, shake: true, fps: false, invert: false },
       flags: { intro: false, firstMatch: false, autoQueue: true, banditHint: false },
+      contracts: [], ach: {}, rankSeen: 0, det: 0,
     };
   },
   isObj(o) { return o && typeof o === 'object' && !Array.isArray(o); },
@@ -96,6 +97,13 @@ const Shop = {
     if (!m || Save.data.maps[id] || !this.spend(m.unlock)) return false;
     Save.data.maps[id] = true; Save.save(); return true;
   },
+  modeOwned(id) { return id === 'ffa' || !!Save.data.modes[id]; },
+  nextMode() { return MODES.find(m => !this.modeOwned(m.id)); },
+  buyMode(id) {
+    const m = MODE_BY_ID[id], next = this.nextMode();
+    if (!m || this.modeOwned(id) || !next || next.id !== id || !this.spend(m.cost)) return false;
+    Save.data.modes[id] = true; Save.data.mode = id; Save.save(); return true;
+  },
   buyWeapon(id) {
     const w = WEAPON_BY_ID[id];
     if (!w || Save.data.weapons[id] || !this.spend(w.cost)) return false;
@@ -112,8 +120,17 @@ const Shop = {
     if (!item || Save.data[bag][id] || !this.spendSalt(item.cost)) return false;
     Save.data[bag][id] = true; Save.save(); return true;
   },
+  panic: false,
+  // the panic key unloads everything except the stealth modules themselves
+  live(id) {
+    if (!this.active(id)) return false;
+    if (!this.panic) return true;
+    const m = MODULE_BY_ID[UPGRADE_BY_ID[id].mod];
+    return !!(m && m.stealth);
+  },
+  riskOf(mod) { return UPGRADES.filter(u => (!mod || u.mod === mod) && this.live(u.id)).reduce((t, u) => t + u.risk, 0); },
   compute() {
-    const a = id => this.active(id);
+    const a = id => this.live(id);
     const S = {};
     // LOCK-ON
     S.aim = a('aim1');
@@ -142,16 +159,32 @@ const Shop = {
     // PLOT ARMOR
     S.dmgTaken = a('pa3') ? 0.35 : a('pa1') ? 0.7 : 1; S.regen = a('pa2'); S.reflect = a('pa4'); S.ghost = a('pa5'); S.immortal = a('pa6');
     // MONEY GLITCH
-    S.cr = (a('mn1') ? 1.25 : 1) * (a('mn6') ? 2 : 1) * (a('mn8') ? 3 : 1) * this.smurfMult();
+    S.cr = (a('mn1') ? 1.25 : 1) * (a('mn6') ? 2 : 1) * (a('mn8') ? 2 : 1) * this.smurfMult();
     S.hsBonus = a('mn2') ? 0.5 : 0; S.streak = a('mn3'); S.overtime = a('mn4') ? 30 : 0; S.salt = a('mn5') ? 2 : 1; S.afk = a('mn7');
     // LAG SWITCH
     S.botAcc = a('lg7') ? 0.06 : a('lg1') ? 0.65 : 1; S.botSpeed = a('lg2') ? 0.65 : 1; S.freeze = a('lg4');
     S.extraBots = (a('lg3') ? 2 : 0) + (a('lg5') ? 4 : 0); S.magnet = a('lg6');
+    // KILLSTREAK.EXE
+    S.recon = a('ks1'); S.carePkg = a('ks2'); S.airstrike = a('ks3'); S.hardline = a('ks4'); S.orbital = a('ks5'); S.nuke = a('ks6');
+    // SOCIAL HACK
+    S.susGain = a('so1') ? 0.65 : 1; S.salt *= a('so2') ? 1.5 : 1; S.admin = a('so3'); S.ragebait = a('so4'); S.bounty = a('so5'); S.clip = a('so6');
+    // GUNSMITH
+    S.dmgMul = a('gs1') ? 1.2 : 1; S.hsMul = a('gs2') ? 1.5 : 1; S.vamp = a('gs3'); S.exRounds = a('gs4'); S.ricochet = a('gs5'); S.chain = a('gs6');
+    // CHRONO
+    S.reload *= a('ch1') ? 0.7 : 1; S.swapMul = a('ch1') ? 0.7 : 1; S.slowmo = a('ch2'); S.rewind = a('ch3'); S.matrix = a('ch4'); S.timeThief = a('ch5');
+    // INSIDER
+    S.chips = a('in1'); S.chipRange = a('in2') ? 10 : 1.8; S.interest = a('in3'); S.sponsor = a('in4'); S.insider = a('in5');
+    // GHOSTWARE
+    S.scanMul = (a('gh1') ? 0.7 : 1) * (a('gh6') ? 0.6 : 1) * (a('gh7') ? 0 : 1); S.humanizer = a('gh2'); S.kernel = a('gh3');
+    S.panicKey = a('gh4'); S.streamProof = a('gh5'); S.coolMul = a('gh6') ? 2 : 1;
+    // SPOOFER
+    S.shredder = a('sp1'); S.bribe = a('sp2'); S.hwid = a('sp3'); S.alt = a('sp4'); S.appeal = a('sp5');
+    S.risk = this.riskOf();
     this.S = S;
     return S;
   },
   // prestige: start over on a fresh account, keep cosmetics, earn more forever
-  smurfMult(lvl) { return 1 + 0.75 * (lvl == null ? (Save.data.smurf || 0) : lvl); },
+  smurfMult(lvl) { return 1 + 0.5 * (lvl == null ? (Save.data.smurf || 0) : lvl); },
   smurfNeeds() {
     const d = Save.data;
     return { maps: MAPS.every(m => d.maps[m.id]), cheats: Object.keys(d.owned).filter(k => d.owned[k]).length, need: 40 };

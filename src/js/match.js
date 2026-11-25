@@ -16,6 +16,7 @@ const Match = {
   start(mapId, opts = {}) {
     const def = MAP_BY_ID[mapId];
     if (!def) return;
+    Shop.panic = false;
     const S = Shop.compute();
     this.def = def;
     World.load(def);
@@ -30,10 +31,13 @@ const Match = {
     this.angHist = []; this.aimTarget = null; this.deathCam = null; this.afkPlan = null;
     this.fx = { flash: 0, muzzle: 0, shake: 0, fovKick: 0, hurt: [], hitmark: 0, hitHead: false, hitKill: false, lowHp: 0, freezeTint: 0 };
     this.st = { kills: 0, deaths: 0, hs: 0, shots: 0, hits: 0, best: 0, multiMax: 1, allyKills: 0 };
-    this.earn = { base: 0, bonus: 0, mult: 0, win: 0, total: 0, salt: 0, team: 0, rounds: 0 };
+    this.earn = { base: 0, bonus: 0, mult: 0, win: 0, total: 0, salt: 0, team: 0, rounds: 0, special: 0, streak: 0, kick: 0, clip: 0, xp: 0,
+      chips: 0, interest: 0, bribe: 0, forfeit: 0, fine: 0, style: 0, streakx: 0, gun: 0 };
+    this.bossDown = false; this.ggIdx = 0;
     this.afk = !!(opts.auto && S.afk);
     // mode + teams
     let mode = MODE_BY_ID[opts.mode] || MODE_BY_ID[Save.data.mode] || MODES[0];
+    if (!Shop.modeOwned(mode.id)) mode = MODES[0];
     if (mode.id === 'tdm' && lineup(def, 'tdm').allies < 1) mode = MODES[0];
     this.mode = mode;
     this.score = { blue: 0, red: 0 };
@@ -55,7 +59,7 @@ const Match = {
     this.bots = [];
     const lu = lineup(def, mode.id, S.extraBots);
     for (let i = 0; i < lu.allies + lu.foes; i++) {
-      const team = mode.id === 'ffa' ? 'ffa' + i : (i < lu.allies ? 'blue' : 'red');
+      const team = mode.ffa ? 'ffa' + i : (i < lu.allies ? 'blue' : 'red');
       this.bots.push(this.newBot(this.namePool.pop() || ('bot_' + i), i, team));
     }
     for (const b of this.bots) this.spawnBot(b, true);
@@ -66,6 +70,9 @@ const Match = {
     }
     Chat.reset();
     Chat.onMatchStart();
+    Extras.onMatchStart();
+    AC.onMatchStart();
+    Style.onMatchStart();
     Save.data.lastMap = mapId;
     Game.mode = 'match';
     Hub.hide();
@@ -99,14 +106,19 @@ const Match = {
       case 'squad': won = p.kills > p.deaths; break;
       case 'clutch': won = this.roundsWon > this.roundsLost; break;
       case 'tdm': won = this.score.blue > this.score.red; break;
+      case 'gungame': won = this.ggIdx >= GUNGAME_ORDER.length; break;
+      case 'boss': won = !!this.bossDown; break;
       default: won = rank === 1 && p.kills > 0;
     }
-    const win = !early && won;
+    const win = !early && won && !AC.banned && !AC.kicked;
     if (win) {
-      const bonus = this.def.cr * (this.mode.win || 5) * S.cr;
+      const bonus = this.def.cr * (this.mode.win || 5) * S.cr * (S.sponsor ? 3 : 1);
       this.earn.win = bonus; this.earn.total += bonus;
       Save.data.credits += bonus;
     }
+    Extras.onMatchEnd(win, !!early);
+    AC.onMatchEnd(win);
+    Style.onMatchEnd(AC.banned);
     const s = Save.data.stats;
     s.matches++; if (win) s.wins++;
     s.roundsWon = (s.roundsWon || 0) + this.roundsWon;
@@ -117,12 +129,13 @@ const Match = {
     s.peakSus = Math.max(s.peakSus, Math.round(Chat.peak)); s.bestStreak = Math.max(s.bestStreak, this.st.best);
     s.bestMatch = Math.max(s.bestMatch, Math.round(this.earn.total)); s.chatMsgs += Chat.msgs;
     s.playTime += this.clock;
+    Extras.afterStats();
     Save.data.flags.firstMatch = true;
     Save.save();
     Input.unlock();
     Input.fireHeld = false;
     SFX.horn();
-    HUD.showSummary({ rank, of: board.length, win, early: !!early });
+    HUD.showSummary({ rank, of: board.length, win, early: !!early && !AC.kicked && !AC.banned, banned: AC.banned, kicked: AC.kicked });
     if (this.afk && S.afk && Save.data.flags.autoQueue && !early) this.autoT = 7;
   },
   leave() {
@@ -202,7 +215,7 @@ const Match = {
     const S = Shop.S, p = this.p;
     let pos = null;
     if (S.magnet && !initial && p && p.alive && b.team !== 'blue') pos = this.spawnNear(p.pos, 8, 18);
-    if (!pos && this.mode && this.mode.id !== 'ffa') {
+    if (!pos && this.mode && !this.mode.ffa) {
       pos = b.team === 'blue' ? this.pickFrom(this.blueSpawns, this.foePositions()) : this.pickFrom(this.redSpawns, p && p.alive ? [p.pos] : []);
     }
     if (!pos) pos = this.pickSpawn(false);
@@ -219,6 +232,7 @@ const Match = {
     p.hp = 100; p.alive = true; p.prot = 1.5; p.yaw = this.yawToCenter(p.pos); p.pitch = 0;
     for (const w of WEAPONS) if (Save.data.weapons[w.id]) p.ammo[w.id] = this.magSize(w);
     p.reloadT = 0; p.switchT = 0.3;
+    if (this.mode.id === 'gungame') p.ammo[p.weapon] = this.magSize(this.weapon());
     this.deathCam = null;
     HUD.setDead(null);
   },
@@ -257,7 +271,10 @@ const Match = {
     this.cam = this.camera();
     GFX.setCamera(this.cam);
     if (live) this.updateWeapon(dt);
-    if (live) this.updateBots(dt);
+    if (live) this.updateBots(dt * Extras.botTime());
+    if (live) Extras.update(dt);
+    if (this.phase === 'play') AC.update(dt);
+    if (live) Style.update(dt);
     this.updateFx(dt);
     Chat.update(dt);
   },
@@ -317,7 +334,7 @@ const Match = {
   updatePlayer(dt, live, canLook) {
     const p = this.p, S = Shop.S, st = Save.data.settings;
     if (canLook && !this.afk) {
-      const sens = 0.0022 * st.sens * (p.scoped ? 0.3 : 1);
+      const sens = 0.0022 * st.sens * (p.scoped ? 0.3 : 1) * (1 - 0.3 * (p.adsT || 0));
       p.yaw -= Input.mdx * sens;
       p.pitch -= Input.mdy * sens * (st.invert ? -1 : 1);
       const kt = (Input.keys.ArrowLeft ? 1 : 0) - (Input.keys.ArrowRight ? 1 : 0);
@@ -354,10 +371,17 @@ const Match = {
     let wx = -sy * fw + cy * sr, wz = -cy * fw - sy * sr;
     const wl = Math.hypot(wx, wz);
     if (wl > 1) { wx /= wl; wz /= wl; }
-    const maxSpd = PLAYER_SPEED * S.speed * (p.scoped ? 0.55 : 1);
+    // aiming down sights eases in and slows you down a bit
+    p.adsT = U.damp(p.adsT || 0, p.ads ? 1 : 0, 14, dt);
+    const maxSpd = PLAYER_SPEED * S.speed * (p.scoped ? 0.55 : 1) * (1 - 0.35 * p.adsT);
+    // without Bunny Hop, holding Space doesn't chain jumps: each jump needs its own press
+    // (buffered briefly so a press just before landing still counts)
+    p.jumpBuf = jumpPress ? 0.12 : Math.max(0, (p.jumpBuf || 0) - dt);
+    const wantJump = S.bhop ? jumpHeld : p.jumpBuf > 0;
     if (p.onGround) {
       p.groundT += dt;
-      if (jumpHeld) {
+      if (wantJump) {
+        p.jumpBuf = 0;
         p.vel[1] = JUMP_V;
         if (S.bhop) {
           p.hop = Math.min(p.hop + 0.1, 0.7);
@@ -368,6 +392,8 @@ const Match = {
           p.hop = 0;
           const k = 1 - Math.exp(-12 * dt);
           p.vel[0] += (wx * maxSpd - p.vel[0]) * k; p.vel[2] += (wz * maxSpd - p.vel[2]) * k;
+          const hs = Math.hypot(p.vel[0], p.vel[2]);
+          if (hs > maxSpd) { p.vel[0] *= maxSpd / hs; p.vel[2] *= maxSpd / hs; }
         }
         SFX.jump();
       } else {
@@ -378,7 +404,8 @@ const Match = {
     } else {
       p.groundT = 0;
       const cur = Math.hypot(p.vel[0], p.vel[2]);
-      const cap = Math.max(cur, maxSpd * (1 + p.hop));
+      // only Bunny Hop lets you keep speed above a normal run in the air
+      const cap = S.bhop ? Math.max(cur, maxSpd * (1 + p.hop)) : maxSpd;
       p.vel[0] += wx * AIR_ACCEL * dt; p.vel[2] += wz * AIR_ACCEL * dt;
       const n = Math.hypot(p.vel[0], p.vel[2]);
       if (n > cap) { p.vel[0] *= cap / n; p.vel[2] *= cap / n; }
@@ -387,7 +414,7 @@ const Match = {
         for (let i = 0; i < 6; i++) this.addPart(p.pos[0], p.pos[1] + 0.1, p.pos[2], U.rand(-2, 2), U.rand(0, 1), U.rand(-2, 2), 0.08, [0.8, 0.9, 1], 0.35, 2, 0.8, 0);
       }
     }
-    p.vel[1] -= GRAVITY * dt;
+    p.vel[1] -= GRAVITY * (this.def.grav || 1) * dt;
     const wasGround = p.onGround, vyBefore = p.vel[1];
     World.move(p, p.vel[0] * dt, p.vel[1] * dt, p.vel[2] * dt);
     if (p.onGround) { p.airJumps = S.airJumps; if (!wasGround && vyBefore < -4) SFX.land(); }
@@ -397,12 +424,17 @@ const Match = {
       p.stepAcc += hs * dt;
       if (p.stepAcc > 2.3) { p.stepAcc = 0; SFX.step(); }
     }
-    p.moveSpread = (U.clamp(hs / PLAYER_SPEED, 0, 2) * 0.018 + (p.onGround ? 0 : 0.03)) * S.spread * 0.5;
+    // moving costs accuracy, jumping costs a lot (worst right after takeoff); a short ease-in on landing
+    p.airT = p.onGround ? 0 : (p.airT || 0) + dt;
+    p.landT = p.onGround ? Math.max(0, (p.landT || 0) - dt) : 0.18;
+    const moveK = U.clamp(hs / PLAYER_SPEED, 0, 2) * 0.042;
+    const airK = p.onGround ? 0.06 * (p.landT / 0.18) : 0.1 + 0.05 * U.clamp(1 - p.airT / 0.4, 0, 1);
+    p.moveSpread = (moveK + airK) * S.spread * 0.5;
     p.strafeRoll = U.damp(p.strafeRoll, -sr * 0.018, 8, dt);
     V.set(p.eye, p.pos[0], p.pos[1] + EYE_H, p.pos[2]);
     // "zero skill": the crosshair wanders until you buy steady hands
     p.swayT += dt;
-    const sa = 0.018 * S.sway * (p.scoped ? 0.6 : 1) * (this.afk ? 0.3 : 1);
+    const sa = 0.018 * S.sway * (p.scoped ? 0.6 : 1) * (this.afk ? 0.3 : 1) * (1 - 0.5 * p.adsT);
     p.swayX = sa * (Math.sin(p.swayT * 1.3) * 0.6 + Math.sin(p.swayT * 2.9 + 1.3) * 0.4);
     p.swayY = sa * (Math.sin(p.swayT * 1.7 + 0.7) * 0.6 + Math.sin(p.swayT * 3.3 + 2.1) * 0.4) * 0.8;
     p.recoil = U.damp(p.recoil, 0, 6.5, dt);
@@ -433,10 +465,11 @@ const Match = {
   headPoint(b, out) {
     const hs = Shop.S.hbHead;
     out = out || [0, 0, 0];
-    out[0] = b.pos[0]; out[1] = b.pos[1] + 1.47 + 0.15 * hs; out[2] = b.pos[2];
+    const k = b.scale || 1;
+    out[0] = b.pos[0]; out[1] = b.pos[1] + (1.47 + 0.15 * hs) * k; out[2] = b.pos[2];
     return out;
   },
-  chestPoint(b, out) { out = out || [0, 0, 0]; out[0] = b.pos[0]; out[1] = b.pos[1] + 1.15; out[2] = b.pos[2]; return out; },
+  chestPoint(b, out) { out = out || [0, 0, 0]; out[0] = b.pos[0]; out[1] = b.pos[1] + 1.15 * (b.scale || 1); out[2] = b.pos[2]; return out; },
 
   /* ---------------- LOCK-ON ---------------- */
   applyAim(dt) {
@@ -546,7 +579,9 @@ const Match = {
       if (Input.pressed.KeyQ) this.doFreeze();
       if (Input.pressed.KeyE) this.doBlink(null);
     }
-    p.scoped = !!(w.scope && (Input.altHeld || Input.touchScope) && p.reloadT <= 0 && p.switchT <= 0 && !this.afk && !typing);
+    const aimHeld = (Input.altHeld || Input.touchScope) && p.reloadT <= 0 && p.switchT <= 0 && !this.afk && !typing;
+    p.scoped = !!(w.scope && aimHeld);
+    p.ads = !!(!w.scope && aimHeld);
     // triggerbot / autopilot fire check
     let trig = false;
     if (S.trig || this.afk) {
@@ -568,14 +603,14 @@ const Match = {
   },
   switchWeapon(id) {
     const p = this.p;
-    if (!Save.data.weapons[id] || p.weapon === id) return;
-    p.weapon = id; p.switchT = 0.35; p.reloadT = 0; p.scoped = false; p.fireT = Math.max(p.fireT, 0);
+    if (!Save.data.weapons[id] || p.weapon === id || this.mode.id === 'gungame') return;
+    p.weapon = id; p.switchT = 0.35 * (Shop.S.swapMul || 1); p.lastSwitchT = this.clock; p.reloadT = 0; p.scoped = false; p.fireT = Math.max(p.fireT, 0);
     if (p.ammo[id] == null) p.ammo[id] = this.magSize(WEAPON_BY_ID[id]);
     SFX.ui();
   },
   cycleWeapon(dir) {
     const owned = WEAPONS.filter(w => Save.data.weapons[w.id]);
-    if (owned.length < 2) return;
+    if (owned.length < 2 || this.mode.id === 'gungame') return;
     const i = owned.findIndex(w => w.id === this.p.weapon);
     this.switchWeapon(owned[(i + dir + owned.length) % owned.length].id);
   },
@@ -594,22 +629,24 @@ const Match = {
     const muzzle = this.muzzleWorld([0, 0, 0]);
     const shots = S.doubleTap ? 2 : 1;
     for (let s = 0; s < shots; s++) for (let k = 0; k < w.pellets; k++) this.shootRay(w, muzzle);
-    p.recoil += w.recoil * S.recoil * (p.scoped ? 0.5 : 1);
+    p.recoil += w.recoil * S.recoil * (p.scoped ? 0.5 : 1) * (1 - 0.3 * (p.adsT || 0));
     p.recoilYaw += (Math.random() - 0.5) * w.recoil * 0.6 * S.recoil;
     p.bloom = Math.min(0.06, p.bloom + w.spread * 0.3 * S.spread);
     p.kick = 1;
     if (w.id === 'shotgun') p.pump = 1;
     this.fx.muzzle = 0.055;
     this.fx.flash = 0.05;
-    if (w.id === 'sniper' || w.id === 'rail' || w.id === 'shotgun') this.fx.shake = Math.max(this.fx.shake, 0.35);
+    if (w.id === 'sniper' || w.id === 'rail' || w.id === 'shotgun' || w.id === 'launcher' || w.id === 'revolver') this.fx.shake = Math.max(this.fx.shake, 0.35);
     this.st.shots++;
     SFX.shot(w.snd);
     if (!S.infAmmo && p.ammo[w.id] <= 0) this.startReload(0.12);
   },
   shootRay(w, muzzle) {
     const p = this.p, S = Shop.S;
-    let spread = (p.scoped ? (w.scopeSpread || 0) : w.spread) * S.spread + p.moveSpread + p.bloom * (S.spread > 0 ? 1 : 0);
-    if (w.pellets > 1) spread = Math.max(spread, w.spread * 0.3);
+    const ads = p.adsT || 0;
+    let spread = (p.scoped ? (w.scopeSpread || 0) : w.spread * (1 - (w.pellets > 1 ? 0.2 : 0.55) * ads)) * S.spread
+      + p.moveSpread * (1 - 0.4 * ads) + p.bloom * (S.spread > 0 ? 1 : 0) * (1 - 0.3 * ads);
+    if (w.pellets > 1) spread = Math.max(spread, w.spread * 0.25);
     let dir = V.cone([0, 0, 0], p.aimDir, spread);
     let silent = false;
     if (S.aimSilent && this.aimTarget && this.aimTarget.alive) {
@@ -625,14 +662,22 @@ const Match = {
     }
     for (const h of res.hits) {
       const hp = V.madd([0, 0, 0], p.eye, dir, h.t);
-      const dmg = w.dmg * (h.head ? w.head : 1);
+      const dmg = w.dmg * (h.head ? w.head * S.hsMul : 1) * S.dmgMul;
       this.sparks(hp, h.bot.col.acc, 5);
       this.damageBot(h.bot, dmg, h.head, { wall: h.throughWall, silent, magic, dir, hitPos: hp });
+      if (S.vamp) p.hp = Math.min(100, p.hp + 3);
+      if (S.exRounds && !w.splash) Extras.splash(hp, { r: 2.5, dmg: 40 }, h.bot, true);
     }
+    if (S.ricochet && !res.hits.length && res.wall && res.wallReached && !w.splash) Extras.ricochet(V.madd([0, 0, 0], res.wallPt, dir, -0.2), w);
     if (res.wall && res.wallReached) {
       const wp = res.wallPt;
       this.addDecal(wp, res.wall.n);
       this.dust(wp, res.wall.n);
+    }
+    if (w.splash) {
+      const first = res.hits[0];
+      const pt = first ? V.madd([0, 0, 0], p.eye, dir, first.t) : res.wall && res.wallReached ? V.madd([0, 0, 0], res.wallPt, dir, -0.3) : res.end;
+      Extras.splash(pt, w.splash, first ? first.bot : null);
     }
     const tracerEnd = res.end;
     this.addTracer(muzzle, tracerEnd, w.id === 'rail' ? [0.45, 0.9, 1] : [1, 0.86, 0.5], w.id === 'rail' ? 0.05 : 0.018, w.id === 'rail' ? 0.25 : 0.07);
@@ -674,9 +719,10 @@ const Match = {
     const S = Shop.S, hs = S.hbHead, bs = S.hbBody;
     let best = null;
     const hc = this.headPoint(b, [0, 0, 0]);
-    const tH = raySphere(o, d, hc, 0.2 * hs);
+    const k = b.scale || 1;
+    const tH = raySphere(o, d, hc, 0.2 * hs * k);
     if (tH !== null && tH < maxT) best = { t: tH, head: true };
-    const tB = rayCylY(o, d, b.pos[0], b.pos[2], 0.3 * bs, b.pos[1] + 0.02, b.pos[1] + 1.47);
+    const tB = rayCylY(o, d, b.pos[0], b.pos[2], 0.3 * bs * k, b.pos[1] + 0.02, b.pos[1] + 1.47 * k);
     if (tB !== null && tB < maxT && (!best || tB < best.t - 0.02)) best = { t: tB, head: false };
     if (best && S.allHead) best.head = true;
     return best;
@@ -697,7 +743,12 @@ const Match = {
   /* ---------------- damage & kills ---------------- */
   damageBot(b, dmg, head, info) {
     if (!b.alive) return;
+    if (this.mode.id === 'heads' && !head && !info.popper && !info.splash && !info.strike && !info.reflect) {
+      if (Save.data.settings.dmgNums && U.chance(0.5)) this.addFloater(info.hitPos || this.chestPoint(b), 'BODY', '#8e9ab5', 0.8);
+      return;
+    }
     b.hp -= dmg;
+    if (b.boss) Extras.onBossHit(b);
     b.hitFlash = 0.08;
     b.aggroT = 4;
     if (!info.reflect && !info.popper) this.st.hits++;
@@ -710,12 +761,13 @@ const Match = {
     b.alive = false; b.hp = 0; b.deaths++;
     const rs = this.mode.respawn || 2.8;
     b.respawnT = Shop.S.magnet && b.team !== 'blue' ? Math.min(rs, 2.2) : rs;
+    if (b.boss) b.respawnT = 999;
     this.debris(b, info.dir);
     if (killer === 'player') {
       const p = this.p, S = Shop.S;
       p.kills++; p.streak++;
       this.st.kills++;
-      if (this.mode.id !== 'ffa') this.score.blue++;
+      if (!this.mode.ffa) this.score.blue++;
       if (info.head) this.st.hs++;
       this.st.best = Math.max(this.st.best, p.streak);
       if (this.clock - p.lastKillT < 1.25) p.multi++; else p.multi = 1;
@@ -737,19 +789,30 @@ const Match = {
       if (info.head) bonus += S.hsBonus;
       if (S.streak) bonus += Math.min(2, (p.streak - 1) * 0.1);
       if (ctx.ambush) bonus += 0.6;
-      const value = base * (1 + bonus) * S.cr;
+      // the gun that got the kill pays its small multiplier; strikes, lasers, chains and confetti don't
+      const killGun = info.splash ? WEAPON_BY_ID.launcher : (info.strike || info.chain || info.popper || info.reflect || info.nuke) ? null : this.weapon();
+      const xg = killGun ? killGun.pay : 1;
+      const xm = Extras.killMult(b, info), xs = Style.killMult(p.streak);
+      const raw = base * (1 + bonus) * S.cr;
+      const value = raw * xg * xm * xs;
+      this.earn.gun += raw * (xg - 1);
+      this.earn.streakx += raw * xg * (xs - 1);
+      this.earn.special += raw * xg * xs * (xm - 1);
       this.earn.base += base; this.earn.bonus += base * bonus; this.earn.mult += base * (1 + bonus) * (S.cr - 1);
       this.earn.total += value;
       Save.data.credits += value;
       this.addFloater([b.pos[0], b.pos[1] + 2.2, b.pos[2]], '+' + U.fmt(value) + ' CR', '#ffd23f', 1.1, true);
       this.fx.hitKill = true; this.fx.hitmark = 0.3;
       SFX.kill();
-      const wname = info.popper ? 'confetti' : info.reflect ? 'reflect' : this.weapon().name;
+      const wname = info.nuke ? 'ctrl+alt+del' : info.strike ? 'from above' : info.splash ? 'party cannon' : info.popper ? 'confetti' : info.reflect ? 'reflect' : this.weapon().name;
       HUD.killfeed(Save.data.settings.name, b.name, wname, { head: info.head, wall: ctx.wall, mine: true, kTeam: 'blue', vTeam: b.team });
       const calls = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'OVERKILL'];
       if (p.multi >= 2) { HUD.callout(p.multi >= 6 ? 'TOTALLY LEGIT KILL' : calls[p.multi], 'multi'); SFX.streak(p.multi); }
       else if (info.head) HUD.callout('HEADSHOT', 'small');
       Chat.onPlayerKill(b, ctx);
+      AC.onKill(ctx);
+      Style.onKill(b, info, ctx);
+      Extras.onPlayerKill(b, info, ctx);
       if (S.popper && !info.popper) this.pops.push({ pos: [b.pos[0], b.pos[1] + 1, b.pos[2]], t: 0.12 });
     } else if (killer && killer.name) {
       killer.kills++;
@@ -783,15 +846,19 @@ const Match = {
       this.fx.shake = Math.max(this.fx.shake, 0.2);
       if (bot) this.fx.hurt.push({ ang: V.yawOf(V.sub([0, 0, 0], bot.pos, p.pos)), t: 1 });
     }
+    if (p.hp <= 0 && Extras.tryRewind()) return;
     if (p.hp <= 0) this.killPlayer(bot);
   },
   killPlayer(bot) {
     const p = this.p;
     const clutch = this.mode.id === 'clutch';
+    const prevStreak = p.streak;
     p.alive = false; p.hp = 0; p.respawnT = clutch ? 99 : 2.6; p.deaths++; this.st.deaths++; p.streak = 0; p.multi = 0;
+    Extras.onPlayerDeath(prevStreak);
+    Style.onPlayerDeath(bot);
     p.scoped = false; p.reloadT = 0;
     this.deathCam = bot || null;
-    if (this.mode.id !== 'ffa') this.score.red++;
+    if (!this.mode.ffa) this.score.red++;
     if (bot) { bot.kills++; HUD.killfeed(bot.name, Save.data.settings.name, 'bot', { victimMe: true, kTeam: bot.team, vTeam: 'blue' }); }
     Chat.onPlayerDeath(bot);
     SFX.die();
@@ -799,10 +866,12 @@ const Match = {
     if (clutch) this.endRound(false, 'dead');
   },
   rageQuit(b) {
-    if (!b || b.gone) return;
+    if (!b || b.gone || b.boss) return;
     if (b.alive) this.debris(b, null, true);
     b.alive = false; b.gone = true; b.rejoinT = U.rand(3, 6);
+    if (b.bounty) { b.bounty = false; Extras.bounty = null; Extras.bountyT = 2; }
     Chat.onRageQuit(b);
+    Extras.onRageQuit(b);
     if (this.mode.id === 'clutch' && this.phase === 'play' && !this.roundOver && this.foesAlive() === 0) this.endRound(true);
   },
 
@@ -814,6 +883,7 @@ const Match = {
     this.freezeT = 4; p.freezeCD = 18;
     SFX.freeze();
     HUD.callout('FREEZE FRAME', 'multi');
+    AC.onAbility('freeze');
     Chat.onAbility('freeze');
   },
   doBlink(target) {
@@ -846,6 +916,7 @@ const Match = {
     p.blinkCD = 3; p.lastBlinkT = this.clock;
     this.fx.fovKick = 0.25;
     SFX.blink();
+    AC.onAbility('blink');
     Chat.onAbility('blink');
   },
   toggleAfk() {
@@ -1036,7 +1107,8 @@ const Match = {
       if (ps > 11) acc *= 0.7;
       if (!p.onGround) acc *= 0.8;
     }
-    const hit = Math.random() < acc;
+    const heads = this.mode.id === 'heads' && isP;
+    const hit = Math.random() < acc * (heads ? 0.35 : 1);
     let end;
     if (hit) end = [tp[0] + U.rand(-0.15, 0.15), tp[1] + U.rand(-0.3, 0.2), tp[2] + U.rand(-0.15, 0.15)];
     else {
@@ -1052,7 +1124,7 @@ const Match = {
     const pan = U.clamp(V.dot(V.norm(rel, rel), GFX.right), -1, 1) * 0.8;
     SFX.botShot(pd, pan);
     if (!hit) return;
-    const dmg = this.def.bot.dmg * U.rand(0.85, 1.15);
+    const dmg = this.def.bot.dmg * U.rand(0.85, 1.15) * (b.boss ? 2.5 : 1) * (heads ? 2.5 : 1);
     if (isP) this.hurtPlayer(dmg, b);
     else {
       t.hp -= dmg; t.hitFlash = 0.06;
@@ -1112,6 +1184,11 @@ const Match = {
     } else if (kind === 'coins') {
       for (let i = 0; i < 24; i++) this.addPart(x, y + 1.4, z, U.rand(-3, 3), U.rand(3, 7), U.rand(-3, 3), 0.14, [1, 0.8, 0.2], U.rand(1.6, 2.6), 13, 0.35, 0.5, 0.03, 0.14);
       SFX.coin();
+    } else if (kind === 'saltfx') {
+      for (let i = 0; i < 70; i++) this.addPart(x + U.rand(-0.35, 0.35), y + U.rand(0.2, 2), z + U.rand(-0.35, 0.35), U.rand(-0.8, 0.8), U.rand(0, 1.5), U.rand(-0.8, 0.8), 0.05, [0.95, 0.97, 1], U.rand(2, 3.4), 9, 0.15, 0.4);
+    } else if (kind === 'banned') {
+      this.addFloater([x, y + 2.3, z], 'BANNED', '#ff3d4d', 1.6, true);
+      for (let i = 0; i < 30; i++) this.addPart(x, y + 1.2, z, U.rand(-3, 3), U.rand(1, 5), U.rand(-3, 3), 0.1, [1, 0.2, 0.25], U.rand(0.8, 1.6), 6, 0.8, 0);
     } else if (kind === 'fireworks') {
       for (let i = 0; i < 60; i++) this.addPart(x, y + 1.5, z, U.rand(-5, 5), U.rand(5, 12), U.rand(-5, 5), 0.06, U.hsv(Math.random(), 0.8, 1), U.rand(0.8, 1.5), 7, 1, 0);
     }
@@ -1158,6 +1235,7 @@ const Match = {
     const p = this.p, st = Save.data.settings;
     let fov = st.fov * DEG;
     if (p.scoped) fov = 22 * DEG;
+    else fov *= 1 - 0.22 * (p.adsT || 0);
     fov += this.fx.fovKick;
     let eye = p.eye.slice(), yaw = p.yaw + p.recoilYaw * 0.6, pitch = p.pitch + p.recoil, roll = p.strafeRoll * 0.5;
     if (!p.alive) {
@@ -1186,7 +1264,12 @@ const Match = {
     if (p.reloadT > 0) { const k = 1 - p.reloadT / p.reloadMax; const s = Math.sin(U.clamp(k, 0, 1) * Math.PI); drop = s * 0.06; rp = -s * 0.45; rr = s * 0.45; }
     if (p.switchT > 0) { const s = p.switchT / 0.35; drop += s * 0.2; rp -= s * 0.7; }
     const ax = U.clamp(GFX.aspect / 1.7, 0.45, 1); // keep the gun on screen in portrait windows
-    M4.translate(out, out, w.vm[0] * ax + bx + p.vmSwayX, w.vm[1] + by - drop + p.vmSwayY, w.vm[2] + p.kick * 0.045);
+    // aiming pulls the gun to the middle so its sight lines up with the crosshair
+    const a = p.adsT || 0, bob = 1 - 0.75 * a;
+    const G = GUNS[w.id] || GUNS.pistol;
+    if (G.sightY == null) G.sightY = Math.max(0.05, ...G.parts.filter(q => q[6] === 3).map(q => q[1]));
+    const vx = U.lerp(w.vm[0] * ax, 0, a), vy = U.lerp(w.vm[1], -0.09 + (0.1 - G.sightY), a), vz = w.vm[2] + 0.07 * a;
+    M4.translate(out, out, vx + bx * bob + p.vmSwayX * bob, vy + by * bob - drop + p.vmSwayY * bob, vz + p.kick * 0.045 * (1 - 0.5 * a));
     M4.rotY(out, out, p.vmSwayX * 2);
     M4.rotX(out, out, p.kick * 0.16 + rp);
     M4.rotZ(out, out, rr + p.strafeRoll);
@@ -1210,6 +1293,7 @@ const Match = {
       Models.bot(ally ? B.dyn : B.bots, b, ally ? 1 : S.headVisual, frozen && !ally, t);
       Models.shadow(B.trans, b.pos[0], b.pos[1], b.pos[2], 0.85);
     }
+    Extras.drawChips(B.dyn);
     const m = Models.m4;
     for (const q of this.parts) {
       if (!q.alive) continue;
@@ -1257,7 +1341,7 @@ const Match = {
     const S = Shop.S;
     GFX.clearDynamic();
     if (this.on) this.submit();
-    GFX.chams = S.chams ? [1, 0.32, 0.86, 0.6] : null;
+    GFX.chams = S.chams || Extras.uavT > 0 ? [1, 0.32, 0.86, 0.6] : null;
     GFX.flash = this.fx.flash > 0 ? 0.12 : 0;
     if (this.cam) GFX.setCamera(this.cam);
     GFX.render();
@@ -1265,7 +1349,7 @@ const Match = {
   board() {
     const rows = this.bots.filter(b => !b.gone).map(b => ({ name: b.name, k: b.kills, d: b.deaths, col: b.colHex, ping: 18 + (b.id * 13) % 70, isPlayer: false, team: b.team }));
     rows.push({ name: Save.data.settings.name, k: this.p.kills, d: this.p.deaths, col: '#ffd23f', ping: Shop.S.botAcc < 1 ? 999 : 12, isPlayer: true, team: 'blue' });
-    const side = r => (this.mode && this.mode.id !== 'ffa' && r.team !== 'blue' ? 1 : 0);
+    const side = r => (this.mode && !this.mode.ffa && r.team !== 'blue' ? 1 : 0);
     rows.sort((a, b) => side(a) - side(b) || b.k - a.k || a.d - b.d || (a.isPlayer ? -1 : 1));
     return rows;
   },

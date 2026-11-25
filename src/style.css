@@ -535,3 +535,93 @@ input[type="range"] { width: 100%; accent-color: var(--signal); }
 .sum-score b { font-family: var(--f-display); font-size: 18px; color: #fff; }
 #hud[data-mode="tdm"] .h-score.you b { color: #4dd4ff; }
 #hud[data-mode="tdm"] .h-score:not(.you) b, #hud[data-mode="squad"] .h-score:not(.you) b, #hud[data-mode="clutch"] .h-score:not(.you) b { color: #ff6b6b; }
+
+
+/* ---------- contracts, ranks, achievements ---------- */
+.chip.rank { cursor: pointer; color: var(--text); font-size: 14px; }
+.chip.rank i { background: var(--bandit); color: #fff; }
+.contracts { display: grid; gap: 8px; }
+.ct-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ct-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.contract { display: grid; gap: 6px; align-content: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(15, 22, 41, .86); }
+.contract.done { border-color: var(--ok); background: rgba(95, 227, 161, .07); }
+.ct-text { font-weight: 600; font-size: 14.5px; line-height: 1.25; }
+.ct-foot { display: flex; justify-content: space-between; gap: 6px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+.ct-foot em { font-style: normal; color: var(--signal); }
+.contract .btn { justify-self: start; }
+.contract .track i, .rank-card .track i, .sum-rank .track i { background: linear-gradient(90deg, var(--bandit), var(--signal)); }
+.rank-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; padding: 14px 18px; border: 1px solid var(--bandit-line); border-radius: 14px; background: linear-gradient(135deg, rgba(255, 79, 154, .1), rgba(15, 22, 41, .9) 60%); }
+.rank-card h3 { margin: 2px 0 0; font-family: var(--f-display); font-size: 24px; }
+.rank-bar { display: grid; gap: 6px; font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+.rank-bar .track, .sum-rank .track { height: 8px; }
+.ach-box { display: grid; gap: 8px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.ach { display: grid; gap: 2px; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: 10px; opacity: .6; }
+.ach.got { opacity: 1; border-style: solid; border-color: rgba(255, 210, 63, .5); background: rgba(255, 210, 63, .06); }
+.ach b { font-size: 13.5px; }
+.ach span { font-size: 12px; color: var(--muted); line-height: 1.25; }
+.ach em { font-style: normal; font-family: var(--f-mono); font-size: 10.5px; color: var(--signal); }
+.sum-prog { display: grid; gap: 8px; padding: 12px; border-radius: 10px; background: rgba(255, 79, 154, .06); border: 1px solid var(--bandit-line); }
+.sum-rank { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 14px; }
+.sum-rank span { font-family: var(--f-display); font-weight: 700; color: var(--bandit); }
+.sum-rank em { font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.sum-prog ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 13.5px; }
+.sum-prog li.ok { color: var(--ok); }
+.sum-prog li.achv b { color: var(--signal); }
+.sum-prog li.rk { color: #ffd0e4; }
+.modes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+@media (max-width: 900px) { .ct-grid { grid-template-columns: 1fr; } .rank-card { grid-template-columns: 1fr; } .chip.rank { display: none; } }
+
+
+/* ---------- BotGuard ---------- */
+.h-det { --dc: #5fe3a1; position: absolute; top: calc(80px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.h-det .lbl { color: #c3cbe0; font-size: 11px; }
+.h-det b { font-family: var(--f-display); font-size: 14px; color: var(--dc); letter-spacing: 0; }
+.h-det-tier { font-family: var(--f-display); font-weight: 700; font-size: 12px; color: var(--dc); }
+.h-det.scan b, .h-det.scan .h-det-tier { animation: blink .3s steps(2) infinite; }
+.h-admin { padding: 2px 8px; border-radius: 999px; background: rgba(255, 79, 154, .25); border: 1px solid var(--bandit); color: #fff; font-family: var(--f-mono); font-size: 11px; letter-spacing: .04em; }
+.h-panic { padding: 2px 8px; border-radius: 999px; background: rgba(95, 227, 161, .2); border: 1px solid var(--ok); color: #c8ffe0; font-family: var(--f-mono); font-size: 11px; }
+.h-afk { top: calc(106px + env(safe-area-inset-top, 0px)); }
+.ov-det { font-family: var(--f-mono); font-size: 12px; color: #cfd6e6; }
+.ov-det b { color: var(--dc); }
+.sum-title.bad { color: var(--danger); }
+.sum-row.neg b { color: var(--danger); }
+.sum-det { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: rgba(255, 84, 112, .06); border: 1px solid rgba(255, 84, 112, .25); font-size: 14px; }
+.sum-det span { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.sum-det .d0 { color: var(--d0); } .sum-det .d1 { color: var(--d1); font-family: var(--f-display); }
+.sum-det em { font-style: normal; color: var(--muted); font-size: 13px; flex-basis: 100%; }
+.pill.det { color: var(--dc); border-color: color-mix(in srgb, var(--dc) 45%, transparent); }
+.nd-risk { font-size: 13px; color: var(--muted); }
+.nd-risk .dots { color: var(--danger); letter-spacing: 2px; }
+.ok { color: var(--ok); }
+.det-card { --dc: #5fe3a1; display: grid; gap: 8px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--dc) 40%, var(--line)); border-radius: 12px; background: rgba(15, 22, 41, .86); }
+.det-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.det-head b { font-family: var(--f-display); color: var(--dc); font-size: 18px; }
+.det-bar { position: relative; height: 8px; border-radius: 4px; background: var(--panel-3); overflow: hidden; }
+.det-bar i { display: block; height: 100%; background: linear-gradient(90deg, #5fe3a1, #ffe24d 30%, #ffa53c 55%, #ff5470 80%); }
+.det-bar span { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0, 0, 0, .5); }
+.det-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.det-card p b { color: var(--text); }
+@media (max-width: 560px) { .h-det { top: calc(72px + env(safe-area-inset-top, 0px)); } .h-det .lbl { display: none; } }
+
+/* ---------- locked game modes ---------- */
+.mode.locked { border-style: dashed; opacity: .62; }
+.mode.locked.buyable, .mode.locked.poor { opacity: 1; border-style: solid; }
+.mode.locked.buyable { border-color: var(--ok); }
+.mode.locked .mode-tag { color: var(--muted); }
+.mode .mode-price { color: var(--muted); }
+.mode.locked.buyable .mode-price { color: var(--ok); }
+.mode.locked.poor .mode-price { color: #ff8aa0; }
+
+/* ---------- style meter ---------- */
+.h-style { --sc: #8e9ab5; position: absolute; right: calc(16px + env(safe-area-inset-right, 0px)); top: calc(230px + env(safe-area-inset-top, 0px)); width: 190px; display: grid; gap: 4px; justify-items: end; text-align: right; }
+.hs-top { display: flex; align-items: center; gap: 8px; }
+.hs-top b { font-family: var(--f-display); font-weight: 800; font-size: 40px; line-height: 1; color: var(--sc); text-shadow: 0 0 14px color-mix(in srgb, var(--sc) 60%, transparent), 0 2px 0 #000; }
+.hs-top span { display: block; font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: .1em; color: var(--sc); }
+.hs-top em { display: block; font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--signal); }
+.hs-bar { width: 100%; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.hs-bar i { display: block; height: 100%; width: 0; margin-left: auto; background: var(--sc); transition: width .2s; }
+.hs-streak { font-family: var(--f-mono); font-size: 11px; color: #ffb26b; min-height: 1em; }
+.hs-feed { display: grid; gap: 1px; justify-items: end; font-family: var(--f-display); font-weight: 700; font-size: 13px; color: #fff; }
+.hs-feed .big { color: var(--signal); font-size: 15px; }
+@media (max-width: 700px) { .h-style { top: calc(190px + env(safe-area-inset-top, 0px)); width: 150px; } .hs-top b { font-size: 30px; } }

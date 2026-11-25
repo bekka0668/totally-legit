@@ -3,6 +3,13 @@
    Hub: server browser, Bandit's cheat shop, arsenal, locker, stats, settings
    ========================================================================= */
 const GLYPHS = {
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8 6.2 21l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  chart: '<path d="M3 20h18M6 16v-4M11 16V8M16 16v-6M20 6l-5 4-4-3-5 4"/>',
+  ghost: '<path d="M5 21V10a7 7 0 0 1 14 0v11l-2.3-2-2.4 2-2.3-2-2.3 2-2.4-2z"/><circle cx="9.5" cy="10.5" r="1"/><circle cx="14.5" cy="10.5" r="1"/>',
+  mask: '<path d="M3 7c3-1 6-1 9 1 3-2 6-2 9-1 0 6-2 10-5 10-2 0-3-2-4-2s-2 2-4 2c-3 0-5-4-5-10z"/><path d="M7 11h3M14 11h3"/>',
+  star: '<path d="M12 2l3 6.5 7 .9-5.2 4.8 1.4 7L12 17.8 5.8 21.2l1.4-7L2 9.4l7-.9z"/>',
+  chat: '<path d="M4 4h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
   aim: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
@@ -34,11 +41,12 @@ const Hub = {
 
   init() {
     const $ = id => document.getElementById(id);
-    this.el = { hub: $('hub'), main: $('hub-main'), cr: $('w-cr'), salt: $('w-salt'), nav: $('hub-nav'), badge: $('badge-bandit'), modal: $('modal'), toast: $('toast') };
+    this.el = { hub: $('hub'), main: $('hub-main'), cr: $('w-cr'), salt: $('w-salt'), rank: $('w-rank'), nav: $('hub-nav'), badge: $('badge-bandit'), modal: $('modal'), toast: $('toast') };
     this.el.nav.addEventListener('click', e => {
       const b = e.target.closest('[data-tab]');
       if (b) { SFX.init(); SFX.ui(); this.setTab(b.dataset.tab); }
     });
+    document.getElementById('w-rank-btn').addEventListener('click', () => { SFX.init(); SFX.ui(); this.setTab('stats'); });
     document.getElementById('btn-settings').addEventListener('click', () => { SFX.init(); SFX.ui(); this.openSettings(); });
     this.el.main.addEventListener('click', e => this.onClick(e));
     this.el.main.addEventListener('input', e => this.onInput(e));
@@ -76,6 +84,7 @@ const Hub = {
       this.lastWallet = w;
       this.el.cr.textContent = U.fmt(Save.data.credits);
       this.el.salt.textContent = U.fmt(Save.data.salt);
+      this.el.rank.textContent = Extras.rankInfo().name;
       const n = Shop.affordableCount();
       this.el.badge.textContent = n ? String(n) : '';
       this.el.badge.hidden = !n;
@@ -114,6 +123,9 @@ const Hub = {
 
   /* ---------------- rendering ---------------- */
   render() {
+    Extras.ensureContracts();
+    Extras.checkAch();
+    Extras.checkRank();
     this.lastWallet = '';
     this.update(0);
     for (const b of this.el.nav.querySelectorAll('[data-tab]')) {
@@ -129,9 +141,17 @@ const Hub = {
 
   tab_play() {
     const S = Shop.S, D = Save.data;
-    const mode = MODE_BY_ID[D.mode] || MODES[0];
-    const modes = MODES.map(md => `<button class="mode ${md.id === mode.id ? 'on' : ''}" role="radio" aria-checked="${md.id === mode.id}" data-act="mode" data-mode="${md.id}">
-        <span class="mode-tag">${md.tag}</span><b>${U.esc(md.name)}</b><small>${U.esc(md.blurb)}</small><em>${md.pay !== 1 ? '×' + md.pay + ' pay per kill' : 'standard pay'}</em></button>`).join('');
+    let mode = MODE_BY_ID[D.mode] || MODES[0];
+    if (!Shop.modeOwned(mode.id)) mode = MODES[0];
+    const nextMode = Shop.nextMode();
+    const modes = MODES.map(md => {
+      const own = Shop.modeOwned(md.id), next = nextMode && nextMode.id === md.id, afford = D.credits >= (md.cost || 0);
+      if (!own) return `<button class="mode locked ${next ? (afford ? 'buyable' : 'poor') : ''}" data-act="${next ? 'buymode' : 'modelocked'}" data-mode="${md.id}" aria-label="${U.esc(md.name)}: locked">
+        <span class="mode-tag">${md.tag} · locked</span><b>${U.esc(md.name)}</b><small>${U.esc(md.blurb)}</small>
+        <em class="mode-price">${next ? 'Unlock · ' + U.fmt(md.cost) + ' CR' : 'Unlock the one before first'}</em></button>`;
+      return `<button class="mode ${md.id === mode.id ? 'on' : ''}" role="radio" aria-checked="${md.id === mode.id}" data-act="mode" data-mode="${md.id}">
+        <span class="mode-tag">${md.tag}</span><b>${U.esc(md.name)}</b><small>${U.esc(md.blurb)}</small><em>${md.pay !== 1 ? '×' + md.pay + ' pay per kill' : 'standard pay'}</em></button>`;
+    }).join('');
     const firstLocked = MAPS.find(m => !D.maps[m.id]);
     const last = MAP_BY_ID[D.lastMap] && D.maps[D.lastMap] ? MAP_BY_ID[D.lastMap] : MAPS[0];
     const rows = MAPS.map((m, i) => {
@@ -149,7 +169,7 @@ const Hub = {
         <div class="srv-info">
           <h3>${U.esc(m.name)}</h3>
           <p>${U.esc(m.blurb)}</p>
-          <div class="srv-meta"><span>${bots} bot${bots > 1 ? 's' : ''}</span><span class="pay">${U.fmt(m.cr * mode.pay * S.cr)} CR / kill</span><span>${mode.id === 'clutch' ? 'first to 5 rounds' : U.fmtTime(m.time + S.overtime)}</span><span>${12 + i * 9} ms</span></div>
+          <div class="srv-meta"><span>${bots} bot${bots > 1 ? 's' : ''}</span><span class="pay">${U.fmt(m.cr * mode.pay * S.cr)} CR / kill</span><span>${mode.id === 'clutch' ? 'first to 5 rounds' : U.fmtTime(m.time + S.overtime)}</span>${m.grav ? '<span>low gravity</span>' : ''}<span>${12 + i * 9} ms</span></div>
         </div>
         <div class="srv-act">${act}</div>
       </article>`;
@@ -164,12 +184,14 @@ const Hub = {
         <button class="btn primary big" data-act="play" data-map="${last.id}">Quick play · ${U.esc(last.name)}</button>
       </header>
       ${Shop.canSmurf() ? `<button class="smurf-banner" data-act="tab" data-tab="stats"><b>Ready for a fresh account.</b> Start over in Stats for ×${Shop.smurfMult((Save.data.smurf || 0) + 1).toFixed(2)} credits forever.</button>` : ''}
+      ${this.detCard()}
+      ${this.contractsHtml()}
       <div class="modes" role="radiogroup" aria-label="Game mode">${modes}</div>
       <div class="srv-list" role="list">${rows}</div>
       <div class="tips">
         <div class="tip"><b>Can't aim?</b> Expected. Play a match, bank the credits, then visit Bandit.</div>
         <div class="tip"><b>Chat getting salty?</b> Angry messages drop salt. Spend it in the Locker.</div>
-        <div class="tip"><b>No bans.</b> The server admin has been AFK since launch.</div>
+        <div class="tip"><b>BotGuard is real now.</b> Every cheat adds detection. Too many reports and an admin shows up to watch.</div>
       </div>
     </section>`;
   },
@@ -225,7 +247,7 @@ const Hub = {
           ${RACCOON_SVG}
           <div>
             <div class="bandit-name">BANDIT <span>cheat loader v6.6</span></div>
-            <div class="bandit-pills"><span class="pill ok">● undetected</span><span class="pill">admin: afk</span><span class="pill hot">${affordN} ready to inject</span></div>
+            <div class="bandit-pills"><span class="pill det" style="--dc:${AC.tier().color}">● BotGuard ${Math.round(AC.det)}% ${AC.tier().name.toLowerCase()}</span><span class="pill">risk ${Shop.S.risk.toFixed(1)} / scan +${AC.scanGain().toFixed(1)}%</span><span class="pill hot">${affordN} ready to inject</span></div>
           </div>
         </div>
         <p class="bubble" id="bandit-bubble">${U.esc(this.quip)}</p>
@@ -234,7 +256,7 @@ const Hub = {
         <nav class="mods" aria-label="Cheat modules">${mods}</nav>
         <div class="tree-pane" style="--mc:${mod.color}">
           <div class="tree-head">
-            <div class="tree-title">${glyph(mod.glyph, 'glyph big')}<div><h2>${mod.name}</h2><p>${mod.kind} · ${U.esc(mod.blurb)}</p></div></div>
+            <div class="tree-title">${glyph(mod.glyph, 'glyph big')}<div><h2>${mod.name}</h2><p>${mod.kind} · ${U.esc(mod.blurb)}${mod.stealth ? ' · <b class="ok">undetectable</b>' : ` · <b>risk ${Shop.riskOf(mod.id).toFixed(1)}</b> while on`}</p></div></div>
             ${pr.owned ? `<label class="switch"><input type="checkbox" id="mod-toggle" data-act="toggle" data-mod="${mod.id}" ${Shop.modOn(mod.id) ? 'checked' : ''}><span class="sw-track"></span><span class="sw-label">${Shop.modOn(mod.id) ? 'On' : 'Off'}</span></label>` : ''}
           </div>
           <div class="tree-scroll"><div class="tree" style="width:${TW}px;height:${TH}px">
@@ -246,13 +268,42 @@ const Hub = {
           <div class="nd-kind">${mod.name} // ${sst === 'owned' ? 'injected' : sst === 'locked' ? 'locked' : 'in stock'}</div>
           <h3>${U.esc(sel.name)}</h3>
           <p>${U.esc(sel.desc)}</p>
+          <div class="nd-risk">${sel.risk ? `Detection risk <span class="dots">${'●'.repeat(Math.ceil(sel.risk))}${'○'.repeat(Math.max(0, 5 - Math.ceil(sel.risk)))}</span> +${(sel.risk * 0.15).toFixed(2)}% per scan` : '<span class="ok">No detection risk</span>'}</div>
           ${sel.req ? `<div class="nd-req">Requires: ${sel.req.map(r => `<span class="${Shop.owned(r) ? 'ok' : ''}">${U.esc(UPGRADE_BY_ID[r].name)}</span>`).join(' ')}</div>` : ''}
           <div class="nd-price"><span class="sticker">${sst === 'owned' ? 'SOLD' : U.fmt(sel.cost) + ' CR'}</span></div>
           ${btn}
-          <p class="nd-fine">No refunds. No questions. No anti-cheat.</p>
+          <p class="nd-fine">No refunds. No questions. Some anti-cheat, unfortunately.</p>
         </aside>
       </div>
     </section>`;
+  },
+
+  detCard() {
+    const t = AC.tier(), d = Math.round(AC.det), S = Shop.S;
+    const scan = AC.scanGain();
+    const tip = d >= 75 ? 'One more bad match and you are banned. Switch modules off at Bandit\'s and lay low.'
+      : d >= 50 ? 'BotGuard is watching closely. Run fewer cheats or buy GHOSTWARE.'
+      : d >= 25 ? 'You have been flagged. A match with everything switched off cools you down fast.'
+      : 'Nobody suspects a thing. Yet.';
+    return `<div class="det-card" style="--dc:${t.color}">
+      <div class="det-head"><span class="eyebrow">BotGuard anticheat</span><b>${d}% · ${t.name}</b></div>
+      <div class="det-bar"><i style="width:${d}%"></i><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span></div>
+      <p>${tip} Each scan adds <b>${scan.toFixed(1)}%</b> (risk ${S.risk.toFixed(1)}), every ${AC.interval()} s. Bans so far: ${Save.data.stats.bans || 0}.</p>
+    </div>`;
+  },
+  contractsHtml() {
+    const D = Save.data;
+    const cards = D.contracts.map((c, i) => {
+      const fr = Math.min(1, c.prog / c.n);
+      return `<div class="contract ${c.done ? 'done' : ''}">
+        <div class="ct-text">${U.esc(Extras.contractText(c))}</div>
+        <div class="track"><i style="width:${Math.round(fr * 100)}%"></i></div>
+        <div class="ct-foot"><span>${U.fmt(c.prog)} / ${U.fmt(c.n)}</span><em>+${U.fmt(c.cr)} CR · +${c.salt} salt</em></div>
+        ${c.done ? `<button class="btn small primary" data-act="claim" data-i="${i}">Claim</button>`
+          : `<button class="btn small ghost" data-act="reroll" data-i="${i}" title="Swap this contract for another one">Swap · 10 salt</button>`}
+      </div>`;
+    }).join('');
+    return `<div class="contracts"><div class="ct-head"><span class="eyebrow">Bandit's odd jobs</span><span class="msg">Finish a contract, then claim it here.</span></div><div class="ct-grid">${cards}</div></div>`;
   },
 
   tab_arsenal() {
@@ -262,7 +313,7 @@ const Hub = {
     const guns = WEAPONS.map((w, i) => {
       const owned = !!D.weapons[w.id], eq = D.equipped === w.id;
       return `<button class="gun ${sel.id === w.id ? 'sel' : ''} ${owned ? 'owned' : ''}" data-act="gun" data-gun="${w.id}">
-        <span class="g-key">${i + 1}</span><span class="g-kind">${w.kind}</span><b>${U.esc(w.name)}</b>
+        <span class="g-key">${i + 1}</span><span class="g-kind">${w.kind} · ×${w.pay}</span><b>${U.esc(w.name)}</b>
         <span class="g-state">${eq ? 'Equipped' : owned ? 'Owned' : U.fmt(w.cost) + ' CR'}</span></button>`;
     }).join('');
     const dps = sel.dmg * sel.pellets / sel.rate;
@@ -272,6 +323,7 @@ const Hub = {
       ['Per second', Math.min(1, dps / maxDps), `${Math.round(dps)} dps`],
       ['Magazine', Math.min(1, sel.mag / 32), `${sel.mag}`],
       ['Accuracy', 1 - Math.min(1, sel.spread / 0.09), `${(sel.spread / DEG).toFixed(1)}° spread`],
+      ['Pay', (sel.pay - 1) / 0.5, `×${sel.pay} credits`],
     ].map(b => `<div class="bar"><span>${b[0]}</span><div class="track"><i style="width:${Math.round(b[1] * 100)}%"></i></div><em>${b[2]}</em></div>`).join('');
     const owned = !!D.weapons[sel.id];
     let act;
@@ -281,7 +333,7 @@ const Hub = {
     const skins = SKINS.filter(s => D.skins[s.id]).map(s => `<button class="sw ${(D.skinOf[sel.id] || 'factory') === s.id ? 'on' : ''}" data-act="applyskin" data-skin="${s.id}" style="--c0:${s.c0};--c1:${s.c1}" title="${U.esc(s.name)}" aria-label="Apply ${U.esc(s.name)}"></button>`).join('');
     return `<section class="pane arsenal">
       <header class="pane-head">
-        <div><div class="eyebrow">Arsenal</div><h1>Weapons</h1><p class="lede">Equipped guns start every match in your hands. Switch mid-match with 1–6 or the scroll wheel.</p></div>
+        <div><div class="eyebrow">Arsenal</div><h1>Weapons</h1><p class="lede">Equipped guns start every match in your hands. Switch mid-match with the number keys or the scroll wheel.</p></div>
       </header>
       <div class="gun-grid">${guns}</div>
       <div class="gun-detail">
@@ -352,6 +404,9 @@ const Hub = {
       ['Reports against you', U.fmt(s.reports)], ['Rage quits caused', U.fmt(s.ragequits)], ['Peak suspicion', s.peakSus + '%'], ['Time played', fmtDur(s.playTime)],
       ['Solo vs Squad wins', U.fmt((s.modeWins || {}).squad || 0)], ['Clutch series won', U.fmt((s.modeWins || {}).clutch || 0)],
       ['Rounds won', U.fmt(s.roundsWon || 0)], ['Team wins · teammate kills', U.fmt((s.modeWins || {}).tdm || 0) + ' · ' + U.fmt(s.allyKills || 0)],
+      ['Jump-shot kills', U.fmt(s.jumpKills || 0)], ['No-scope kills', U.fmt(s.noScopes || 0)], ['Best style score', U.fmt(s.bestStyle || 0)], ['Top style rank', STYLE_RANKS[s.topStyleRank || 0].name],
+      ['Bans', U.fmt(s.bans || 0)], ['Kicked by admins', U.fmt(s.adminKicks || 0)], ['Admins fooled', U.fmt(s.adminsSurvived || 0)], ['Admins bribed', U.fmt(s.bribes || 0)],
+      ['Raid bosses down', U.fmt(s.bosses || 0)], ['Bounties claimed', U.fmt(s.bounties || 0)], ['Bots kicked', U.fmt(s.kicks || 0)], ['Contracts done', U.fmt(s.contracts || 0)],
     ].map(t => `<div class="tile"><span>${t[0]}</span><b>${t[1]}</b></div>`).join('');
     const owned = Object.keys(Save.data.owned).filter(k => Save.data.owned[k]).length;
     const lvl = Save.data.smurf || 0, sn = Shop.smurfNeeds(), can = Shop.canSmurf();
@@ -367,7 +422,9 @@ const Hub = {
       </div>`;
     return `<section class="pane stats">
       <header class="pane-head"><div><div class="eyebrow">Career // account #${lvl + 1}</div><h1>Totally legit stats</h1><p class="lede">${owned} of ${UPGRADES.length} cheats injected. Bans received: 0.</p></div></header>
+      ${this.rankHtml()}
       <div class="stat-grid">${tiles}</div>
+      ${this.achHtml()}
       ${smurf}
       <div class="save-box">
         <h3>Save code</h3>
@@ -385,6 +442,19 @@ const Hub = {
     </section>`;
   },
 
+  rankHtml() {
+    const ri = Extras.rankInfo();
+    return `<div class="rank-card"><div><div class="eyebrow">Rank ${ri.r} of ${RANKS.length - 1}</div><h3>${U.esc(ri.name)}</h3></div>
+      <div class="rank-bar"><div class="track"><i style="width:${Math.round(ri.frac * 100)}%"></i></div>
+      <span>${ri.next ? `${U.fmt(ri.xp - ri.cur)} / ${U.fmt(ri.next - ri.cur)} XP to ${U.esc(RANKS[ri.r + 1])}` : 'Top rank. You own the server now.'}</span></div></div>`;
+  },
+  achHtml() {
+    const A = Save.data.ach || {};
+    const n = ACHIEVEMENTS.filter(a => A[a.id]).length;
+    const items = ACHIEVEMENTS.map(a => `<div class="ach ${A[a.id] ? 'got' : ''}" title="${U.esc(a.desc)}"><b>${U.esc(a.name)}</b><span>${U.esc(a.desc)}</span><em>${A[a.id] ? 'Unlocked' : '+' + a.salt + ' salt'}</em></div>`).join('');
+    return `<div class="ach-box"><div class="ct-head"><span class="eyebrow">Achievements</span><span class="msg">${n} of ${ACHIEVEMENTS.length}</span></div><div class="ach-grid">${items}</div></div>`;
+  },
+
   /* ---------------- events ---------------- */
   onClick(e) {
     const b = e.target.closest('[data-act]');
@@ -394,7 +464,24 @@ const Hub = {
     SFX.init();
     switch (a) {
       case 'mode': SFX.ui(); D.mode = b.dataset.mode; Save.save(); this.render(); break;
+      case 'buymode': {
+        const md = MODE_BY_ID[b.dataset.mode];
+        if (Shop.buyMode(md.id)) { SFX.buy(); this.toast(`Unlocked ${md.name}`, 'good'); this.render(); }
+        else { SFX.deny(); this.toast(`${md.name} costs ${U.fmt(md.cost)} CR`, 'bad'); }
+        break;
+      }
+      case 'modelocked': SFX.deny(); this.toast('Unlock the modes before this one first', 'bad'); break;
       case 'play': SFX.ui(); this.startMatch(b.dataset.map); break;
+      case 'claim': {
+        const c = Extras.claim(+b.dataset.i);
+        if (c) { SFX.buy(); this.toast(`Contract paid: +${U.fmt(c.cr)} CR, +${c.salt} salt`, 'good'); this.render(); }
+        break;
+      }
+      case 'reroll': {
+        if (Extras.reroll(+b.dataset.i)) { SFX.ui(); this.render(); }
+        else { SFX.deny(); this.toast('Swapping costs 10 salt', 'bad'); }
+        break;
+      }
       case 'unlock': {
         if (Shop.buyMap(b.dataset.map)) { SFX.buy(); this.toast(`Unlocked ${MAP_BY_ID[b.dataset.map].name}`, 'good'); this.render(); }
         else { SFX.deny(); this.toast('Not enough credits yet', 'bad'); }
@@ -537,7 +624,7 @@ const Hub = {
           <div class="eyebrow">incoming message · BANDIT</div>
           <h2>psst. hey. you.</h2>
           <p>You can't aim. That's fine, nobody really can. Go win a few matches on the BOTCAMP servers and bring me the credits. I'll sort you out.</p>
-          <p>Don't worry about getting caught. There's no anti-cheat on those servers, and the admin has been AFK for years. The only thing watching you is the chat.</p>
+          <p>One catch: the servers run BotGuard now. Every cheat you inject makes noise, and if the chat reports you enough, an admin logs in to watch. Get caught and you lose the match's credits. Buy quiet, play smart.</p>
           <button class="btn primary big" id="intro-ok">Sounds totally legit</button>
         </div>
       </div>`, m => {

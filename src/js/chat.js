@@ -14,6 +14,7 @@ const Chat = {
   },
   tierOf(s) { return s < 15 ? 0 : s < 35 ? 1 : s < 60 ? 2 : s < 85 ? 3 : 4; },
   addSus(n) {
+    if (n > 0 && Shop.S && Shop.S.susGain) n *= Shop.S.susGain;
     this.sus = U.clamp(this.sus + n, 0, 100);
     this.peak = Math.max(this.peak, this.sus);
     if (n > 0) this.calmT = 0;
@@ -90,6 +91,7 @@ const Chat = {
       this.salt += salt;
       Match.earn.salt += salt;
       Save.data.salt += salt;
+      Extras.track('salt', salt);
       HUD.saltPop(salt);
       SFX.salt();
     } else SFX.chat();
@@ -103,7 +105,7 @@ const Chat = {
 
   onMatchStart() {
     const M = Match, mid = M.mode.id;
-    this.server(`Welcome to BOTCAMP // ${M.def.name} // ${M.mode.name}. Anti-cheat: not installed.`);
+    this.server(`Welcome to BOTCAMP // ${M.def.name} // ${M.mode.name}. BotGuard anticheat: active.`);
     const foes = U.shuffle(M.bots.filter(b => b.team !== 'blue')), allies = U.shuffle(M.bots.filter(b => b.team === 'blue'));
     if (mid === 'squad' || mid === 'clutch') {
       const n = String(foes.length);
@@ -174,6 +176,11 @@ const Chat = {
       if (fo.length) this.queue(U.pick(fo), U.pick(CHAT.squadLosing).replace('{n}', String(fo.length)), U.rand(0.6, 1.6), Math.max(1, t));
     }
     if (t >= 3) this.reports += U.randi(1, 1 + t);
+    if (Match.mode.id === 'heads' && t >= 1 && U.chance(0.12)) this.react(CHAT.headsOnly);
+  },
+  react(pool) {
+    const foes = Match.bots.filter(b => b.team !== 'blue' && !b.gone);
+    if (foes.length) this.queue(U.pick(foes), U.pick(pool), U.rand(0.8, 2), Math.max(1, this.tier));
   },
   onPlayerDeath(killer) {
     if (!killer) return;
@@ -213,6 +220,7 @@ const Chat = {
     this.push({ name: Save.data.settings.name || 'you', text, kind: 'player' });
     const low = text.toLowerCase();
     let pool, salty = this.tier;
+    if (/\bez+\b/.test(low)) Extras.track('ez', 1);
     if (/\b(ez+|easy|ezpz)\b/.test(low)) { pool = CHAT.respEZ; this.addSus(10); salty = Math.max(2, this.tier); }
     else if (/(not|no|never|dont|don't).{0,14}(cheat|hack)|\blegit\b|\bclean\b/.test(low)) { pool = CHAT.respLegit; salty = Math.max(1, this.tier); }
     else if (/cheat|hack|aimbot|wall|esp|bought|paid|bandit/.test(low)) { pool = CHAT.respAdmit; this.addSus(15); salty = Math.max(2, this.tier); }
