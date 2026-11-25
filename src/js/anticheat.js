@@ -77,7 +77,7 @@ const AC = {
     if (w) this.addActive(w * 0.03 * (ctx.suppressed ? 0.7 : 1));
   },
   onAbility(kind) {
-    const amt = { freeze: 4, blink: 1.5, orbital: 5, kick: 3, airstrike: 3, nuke: 15, slowmo: 3 }[kind] || 1;
+    const amt = { freeze: 4, blink: 1.5, orbital: 5, kick: 3, airstrike: 3, nuke: 15, slowmo: 3, nade: 1.5 }[kind] || 1;
     this.addActive(amt);
   },
 

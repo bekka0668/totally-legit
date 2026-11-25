@@ -8,6 +8,7 @@ const GLYPHS = {
   chart: '<path d="M3 20h18M6 16v-4M11 16V8M16 16v-6M20 6l-5 4-4-3-5 4"/>',
   ghost: '<path d="M5 21V10a7 7 0 0 1 14 0v11l-2.3-2-2.4 2-2.3-2-2.3 2-2.4-2z"/><circle cx="9.5" cy="10.5" r="1"/><circle cx="14.5" cy="10.5" r="1"/>',
   mask: '<path d="M3 7c3-1 6-1 9 1 3-2 6-2 9-1 0 6-2 10-5 10-2 0-3-2-4-2s-2 2-4 2c-3 0-5-4-5-10z"/><path d="M7 11h3M14 11h3"/>',
+  bomb: '<circle cx="11" cy="14" r="7"/><path d="M15 9l3-3M17 4l1 2 2 1"/>',
   star: '<path d="M12 2l3 6.5 7 .9-5.2 4.8 1.4 7L12 17.8 5.8 21.2l1.4-7L2 9.4l7-.9z"/>',
   chat: '<path d="M4 4h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
   aim: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
@@ -69,6 +70,10 @@ const Hub = {
     Showroom.setup();
     this.render();
     if (!Save.data.flags.intro) this.openIntro();
+    else {
+      const day = More.checkDay();
+      if (day) { this.toast(`Day ${day.streak} login bonus: +${U.fmt(day.cr)} CR, +${day.salt} salt`, 'good'); this.render(); }
+    }
   },
   hide() { this.el.hub.hidden = true; this.closeModal(); },
   setTab(t) {
@@ -123,6 +128,7 @@ const Hub = {
 
   /* ---------------- rendering ---------------- */
   render() {
+    More.newMarket();
     Extras.ensureContracts();
     Extras.checkAch();
     Extras.checkRank();
@@ -185,6 +191,7 @@ const Hub = {
       </header>
       ${Shop.canSmurf() ? `<button class="smurf-banner" data-act="tab" data-tab="stats"><b>Ready for a fresh account.</b> Start over in Stats for ×${Shop.smurfMult((Save.data.smurf || 0) + 1).toFixed(2)} credits forever.</button>` : ''}
       ${this.detCard()}
+      ${this.dailyHtml()}
       ${this.contractsHtml()}
       <div class="modes" role="radiogroup" aria-label="Game mode">${modes}</div>
       <div class="srv-list" role="list">${rows}</div>
@@ -219,9 +226,10 @@ const Hub = {
     }
     const nodeHtml = nodes.map(n => {
       const st = Shop.state(n.id);
-      const poor = st === 'available' && Save.data.credits < n.cost;
+      const price = Shop.priceOf(n.id), deal = More.dealOf(n.id);
+      const poor = st === 'available' && Save.data.credits < price;
       const [x, y] = pos(n);
-      const cost = st === 'owned' ? 'INJECTED' : U.fmt(n.cost) + ' CR';
+      const cost = st === 'owned' ? 'INJECTED' : U.fmt(price) + ' CR' + (deal ? ` · −${Math.round(deal.off * 100)}%` : '');
       return `<button class="node ${st} ${poor ? 'poor' : ''} ${this.selNode === n.id ? 'sel' : ''}" data-act="node" data-up="${n.id}" style="left:${x}px;top:${y}px;width:${NW}px" aria-label="${U.esc(n.name)}: ${st}">
         <span class="n-name">${U.esc(n.name)}</span><span class="n-cost">${cost}</span></button>`;
     }).join('');
@@ -237,11 +245,12 @@ const Hub = {
     const pr = Shop.modProgress(mod.id);
     const sel = UPGRADE_BY_ID[this.selNode];
     const sst = Shop.state(sel.id);
-    const afford = Save.data.credits >= sel.cost;
+    const selPrice = Shop.priceOf(sel.id), selDeal = More.dealOf(sel.id);
+    const afford = Save.data.credits >= selPrice;
     let btn;
     if (sst === 'owned') btn = `<div class="inj-done">Injected${Shop.modOn(mod.id) ? '' : ' (module switched off)'}</div>`;
     else if (sst === 'locked') btn = `<button class="btn" disabled>Needs ${sel.req.map(r => UPGRADE_BY_ID[r].name).join(' + ')}</button>`;
-    else btn = `<button class="btn inject ${afford ? '' : 'poor'}" data-act="buy" data-up="${sel.id}">${afford ? 'Inject' : 'Need'} · ${U.fmt(sel.cost)} CR</button>`;
+    else btn = `<button class="btn inject ${afford ? '' : 'poor'}" data-act="buy" data-up="${sel.id}">${afford ? 'Inject' : 'Need'} · ${U.fmt(selPrice)} CR</button>`;
     const affordN = Shop.affordableCount();
     return `<section class="pane bandit">
       <header class="bandit-head">
@@ -254,6 +263,7 @@ const Hub = {
         </div>
         <p class="bubble" id="bandit-bubble">${U.esc(this.quip)}</p>
       </header>
+      ${this.marketHtml()}
       <div class="bandit-body">
         <nav class="mods" aria-label="Cheat modules">${mods}</nav>
         <div class="tree-pane" style="--mc:${mod.color}">
@@ -272,7 +282,7 @@ const Hub = {
           <p>${U.esc(sel.desc)}</p>
           <div class="nd-risk">${sel.risk ? `Detection risk <span class="dots">${'●'.repeat(Math.ceil(sel.risk))}${'○'.repeat(Math.max(0, 5 - Math.ceil(sel.risk)))}</span> +${(sel.risk * 0.15).toFixed(2)}% per scan` : '<span class="ok">No detection risk</span>'}</div>
           ${sel.req ? `<div class="nd-req">Requires: ${sel.req.map(r => `<span class="${Shop.owned(r) ? 'ok' : ''}">${U.esc(UPGRADE_BY_ID[r].name)}</span>`).join(' ')}</div>` : ''}
-          <div class="nd-price"><span class="sticker">${sst === 'owned' ? 'SOLD' : U.fmt(sel.cost) + ' CR'}</span></div>
+          <div class="nd-price"><span class="sticker">${sst === 'owned' ? 'SOLD' : U.fmt(selPrice) + ' CR'}</span>${selDeal && sst !== 'owned' ? ` <s class="was">${U.fmt(sel.cost)}</s> <b class="deal">black market −${Math.round(selDeal.off * 100)}%</b>` : ''}</div>
           ${btn}
           <p class="nd-fine">No refunds. No questions. Some anti-cheat, unfortunately.</p>
         </aside>
@@ -293,6 +303,31 @@ const Hub = {
       <p>${tip} Each scan adds <b>${scan.toFixed(1)}%</b> (risk ${S.risk.toFixed(1)}), every ${AC.interval()} s. Bans so far: ${Save.data.stats.bans || 0}.</p>
       <p>Ban wave risk after each match: <b>${Math.round(AC.waveChance() * 100)}%</b>${AC.waveChance() ? '. Waves can ban you for matches you already finished.' : ' (only Monitored accounts or worse get caught in waves)'}.</p>
     </div>`;
+  },
+  marketHtml() {
+    const m = Save.data.market;
+    if (!m || !m.deals.length) return '';
+    const cards = m.deals.map(d => {
+      const u = UPGRADE_BY_ID[d.id], mod = MODULE_BY_ID[u.mod], own = Shop.owned(u.id);
+      return `<button class="deal-card ${own ? 'sold' : ''}" data-act="node" data-up="${u.id}" style="--mc:${mod.color}" onclick="Hub.selMod='${u.mod}'">
+        <span class="dc-mod">${mod.name}</span><b>${U.esc(u.name)}</b>
+        <span class="dc-price">${own ? 'SOLD' : `<s>${U.fmt(u.cost)}</s> ${U.fmt(Shop.priceOf(u.id))} CR`}</span><em>−${Math.round(d.off * 100)}%</em></button>`;
+    }).join('');
+    return `<div class="market"><div class="ct-head"><span class="eyebrow">Black market · today only</span><span class="msg">New deals every day. Fell off a truck, apparently.</span></div><div class="deal-row">${cards}</div></div>`;
+  },
+  dailyHtml() {
+    const dl = Save.data.daily;
+    if (!dl || !dl.list || !dl.list.length) return '';
+    const cards = dl.list.map((c, i) => {
+      const fr = Math.min(1, c.prog / c.n);
+      return `<div class="contract daily ${c.done ? 'done' : ''} ${c.claimed ? 'claimed' : ''}">
+        <div class="ct-text">${U.esc(Extras.contractText(c))}</div>
+        <div class="track"><i style="width:${Math.round(fr * 100)}%"></i></div>
+        <div class="ct-foot"><span>${U.fmt(c.prog)} / ${U.fmt(c.n)}</span><em>+${U.fmt(c.cr)} CR · +${c.salt} salt</em></div>
+        ${c.claimed ? '<span class="inj-done">Claimed</span>' : c.done ? `<button class="btn small primary" data-act="claimdaily" data-i="${i}">Claim</button>` : '<span class="msg">double pay · today only</span>'}
+      </div>`;
+    }).join('');
+    return `<div class="contracts"><div class="ct-head"><span class="eyebrow">Daily jobs · login streak ${dl.streak} day${dl.streak > 1 ? 's' : ''}</span><span class="msg">New jobs and a bigger login bonus every day you come back (up to 7).</span></div><div class="ct-grid">${cards}</div></div>`;
   },
   contractsHtml() {
     const D = Save.data;
@@ -524,6 +559,11 @@ const Hub = {
         break;
       }
       case 'atteq': SFX.ui(); Shop.equipAtt(b.dataset.gun, b.dataset.att); this.render(); break;
+      case 'claimdaily': {
+        const r = More.claimDaily(+b.dataset.i);
+        if (r) { SFX.buy(); this.toast(`Daily job paid: +${U.fmt(r.cr)} CR, +${r.salt} salt`, 'good'); this.render(); }
+        break;
+      }
       case 'claim': {
         const c = Extras.claim(+b.dataset.i);
         if (c) { SFX.buy(); this.toast(`Contract paid: +${U.fmt(c.cr)} CR, +${c.salt} salt`, 'good'); this.render(); }

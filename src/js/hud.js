@@ -102,7 +102,7 @@ const HUD = {
     this.radarMap = null;
     e.hud.classList.toggle('has-radar', !!Shop.S.radar);
     const lbls = { ffa: ['You', 'Top bot'], squad: ['Your kills', 'Squad kills'], clutch: ['Rounds', 'Squad'], tdm: ['Blue', 'Red'],
-      gungame: ['Gun', 'Top bot'], heads: ['You', 'Top bot'], boss: ['Your kills', 'Boss HP'] }[Match.mode ? Match.mode.id : 'ffa'];
+      gungame: ['Gun', 'Top bot'], heads: ['You', 'Top bot'], boss: ['Your kills', 'Boss HP'] }[Match.mode ? Match.mode.id : 'ffa'] || ['You', 'Top bot'];
     e['me-lbl'].textContent = lbls[0]; e['top-lbl'].textContent = lbls[1];
     e.hud.dataset.mode = Match.mode ? Match.mode.id : 'ffa';
     const mods = Shop.activeModuleNames();
@@ -133,7 +133,7 @@ const HUD = {
           <div class="keys">
             <span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span><span><kbd>Click</kbd> shoot</span><span><kbd>Space</kbd> jump</span>
             <span><kbd>Right-click</kbd> aim</span><span><kbd>R</kbd> reload</span><span><kbd>1-6</kbd> weapons</span><span><kbd>Tab</kbd> scores</span><span><kbd>T</kbd> chat</span>
-            ${Shop.S.slowmo ? '<span><kbd>V</kbd> bullet time</span>' : ''}${Shop.S.panicKey ? '<span><kbd>P</kbd> panic key</span>' : ''}
+            <span><kbd>C</kbd> grenade</span>${Shop.S.slowmo ? '<span><kbd>V</kbd> bullet time</span>' : ''}${Shop.S.panicKey ? '<span><kbd>P</kbd> panic key</span>' : ''}
             ${Shop.S.orbital ? '<span><kbd>X</kbd> orbital laser</span>' : ''}${Shop.S.admin ? '<span><kbd>G</kbd> kick a bot</span>' : ''}
             ${Shop.S.freeze ? '<span><kbd>Q</kbd> freeze</span>' : ''}${Shop.S.blink ? '<span><kbd>E</kbd> blink</span>' : ''}${Shop.S.afk ? '<span><kbd>F</kbd> AFK farm</span>' : ''}
           </div>
@@ -236,7 +236,7 @@ const HUD = {
       : mid === 'gungame' ? `Reached gun <b>${Math.min(M.ggIdx + 1, GUNGAME_ORDER.length)}</b> of ${GUNGAME_ORDER.length}${M.ggIdx >= GUNGAME_ORDER.length ? ', and finished it' : ''}`
       : mid === 'boss' ? (M.bossDown ? 'The raid boss is scrap metal.' : `The boss survived with <b>${Extras.boss ? Math.max(0, Math.round(Extras.boss.hp / Extras.boss.maxHp * 100)) : 0}%</b> health.`)
       : `${ordinal(r.rank)} of ${r.of} on the scoreboard`;
-    const winWhy = { ffa: '1st place', squad: 'beat the squad', clutch: 'won the series', tdm: 'team won', gungame: 'finished every gun', heads: '1st place', boss: 'boss defeated' }[mid];
+    const winWhy = { ffa: '1st place', squad: 'beat the squad', clutch: 'won the series', tdm: 'team won', gungame: 'finished every gun', heads: '1st place', boss: 'boss defeated' }[mid] || '1st place';
     const quip = r.early ? 'Leaving early? Credits are credits.' : Chat.peak > 85 ? 'The lobby is in shambles. Beautiful work.' : Chat.peak > 35 ? 'They are starting to notice. Keep going.' : st.kills ? 'Nobody suspects a thing. Yet.' : 'Rough one. You know where to find me.';
     const rows = [
       ['Kills', `${st.kills} × ${U.fmt(M.def.cr * (M.mode.pay || 1))} CR${M.mode.pay > 1 ? ' (×' + M.mode.pay + ' ' + M.mode.tag + ' pay)' : ''}`, e.base],
@@ -589,6 +589,7 @@ const HUD = {
     const ab = [];
     if (S.freeze) ab.push(`<span class="ab ${p.freezeCD > 0 ? 'cd' : ''}"><kbd>Q</kbd>Freeze${p.freezeCD > 0 ? ' ' + Math.ceil(p.freezeCD) : ''}</span>`);
     if (S.blink) ab.push(`<span class="ab ${p.blinkCD > 0 ? 'cd' : ''}"><kbd>E</kbd>Blink${p.blinkCD > 0 ? ' ' + Math.ceil(p.blinkCD) : ''}</span>`);
+    ab.push(`<span class="ab ${More.nadesLeft > 0 ? '' : 'cd'}"><kbd>C</kbd>Nade ×${More.nadesLeft}</span>`);
     if (S.orbital) ab.push(`<span class="ab ${Extras.orbitalCD > 0 ? 'cd' : ''}"><kbd>X</kbd>Orbital${Extras.orbitalCD > 0 ? ' ' + Math.ceil(Extras.orbitalCD) : ''}</span>`);
     if (S.admin) ab.push(`<span class="ab ${Extras.adminCD > 0 ? 'cd' : ''}"><kbd>G</kbd>Kick${Extras.adminCD > 0 ? ' ' + Math.ceil(Extras.adminCD) : ''}</span>`);
     if (Extras.uavT > 0) ab.push(`<span class="ab on">Drone ${Math.ceil(Extras.uavT)}</span>`);

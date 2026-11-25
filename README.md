@@ -18,6 +18,7 @@ Double-click `TotallyLegit.html`. It runs offline in any current desktop browser
 | Q / E / F | Freeze Frame / Blink / AFK Farm, once bought |
 | X / G / V | Orbital Laser / Fake Admin kick / Bullet Time, once bought |
 | P | Panic Key: unload every cheat (GHOSTWARE) |
+| C | Throw a grenade |
 | Esc | Pause |
 
 ## Modes
@@ -32,13 +33,15 @@ Pick a mode before joining a server. You start with Free-for-all only (The Close
 | Team Deathmatch | You and bot teammates against a bot team. No friendly fire. | ×1 per kill, plus 25% of every teammate kill |
 | Hand-Me-Downs | Gun game: every kill swaps your gun for the next one, owned or not. A kill with the last gun wins. | ×1.2 per kill |
 | Heads Only | Body shots do nothing. Bots play by the same rule. | ×1.8 per kill |
-| Raid Boss | A giant bot with a big health bar, plus minions. Take it down before time runs out. | ×1 per kill, the boss pays 25× |
+| Raid Boss | A giant bot with a big health bar, plus minions. Take it down before time runs out. | ×1 per kill, the boss pays 15× |
+| Long Distance | LDR-50 only. | ×1.6 per kill |
+| Pistol Party | Peashooter and Hand Cannon only. | ×1.5 per kill |
 
 Cheats that add bots always add them to the enemy team. Wallhack and aimbot ignore teammates.
 
 ## How it plays
 
-- **Credits** come from kills, headshots, streaks and winning. Spend them at **Bandit's** on 191 upgrades across 17 cheat modules (aimbot, wallhack, triggerbot, hitbox expander, no spread, speedhack, ammo, godmode, money hacks, server tricks, killstreak rewards, social hacks, weapon mods, time tricks, economy hacks, and two stealth modules), on 10 guns in the **Arsenal**, and on unlocking 15 lobbies: from a 1v1 closet through a parking garage, an arctic outpost, a neon arcade, desert ruins, a volcano lab and a low-gravity Moon Base, up to the Admin's House with 48 bots.
+- **Credits** come from kills, headshots, streaks and winning. Spend them at **Bandit's** on 198 upgrades across 18 cheat modules (including BOOMBOX grenades on **C**) (aimbot, wallhack, triggerbot, hitbox expander, no spread, speedhack, ammo, godmode, money hacks, server tricks, killstreak rewards, social hacks, weapon mods, time tricks, economy hacks, and two stealth modules), on 12 guns in the **Arsenal** (including a quiet crossbow and a spin-up minigun), and on unlocking 15 lobbies: from a 1v1 closet through a parking garage, an arctic outpost, a neon arcade, desert ruins, a volcano lab and a low-gravity Moon Base, up to the Admin's House with 48 bots.
 - **BotGuard** is the anticheat. Every cheat has a detection risk, and BotGuard scans you every 20 s during a match, so running everything at once gets you caught fast. Obvious plays (wall kills, snaps, spinning, abilities) add more. Detection carries between matches and cools off after each one, faster if you play a match with nothing loaded.
   - At 25 / 50 / 75% you're Flagged / Monitored / Under Review. At 100% you're **banned**: that match's credits are confiscated and you pay a 10% wallet fine.
   - Enough chat reports bring an **admin** to spectate you for 22 s. If you look dirty while they watch, they kick you and you lose half the match's credits.
@@ -49,6 +52,8 @@ Cheats that add bots always add them to the enemy team. Wallhack and aimbot igno
 - **Rival cheaters** show up in lobbies with 5+ bots (more often when you're hot). They wall through cover and react fast, are tagged CHEATER, and pay 6× when killed. They also drop **loader parts**.
 - **Attachments** (Arsenal): each gun has an optic, muzzle and magazine slot: Red Dot, Holo Sight, Suppressor (less detection), Compensator, Extended Mag, Fast Mag. Pay with loader parts, or credits.
 - **Bandit Pass** (Pass tab): 50 tiers on the XP you already earn. Rewards drop automatically: salt, credits, loader parts, and every 5th tier a finish, crosshair or kill effect you can't buy in the Locker.
+- **Daily jobs and login streak**: three double-pay jobs a day on the Play tab, and a login bonus that grows for 7 days in a row.
+- **Black market**: three cheats at Bandit's go 30–50% off each day.
 - **Contracts** on the Play tab are Bandit's odd jobs (get 30 headshots, win a Raid Boss match, type "ez" three times...). Claim them for credits and salt, or swap one for 10 salt.
 - **Ranks** go from Wood Bot to Server Owner. XP comes from kills, wins and contracts, and every rank-up pays salt.
 - **Achievements**: 41 of them on the Stats tab, each paying salt.

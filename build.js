@@ -5,7 +5,7 @@ const path = require('path');
 
 const root = __dirname;
 const src = path.join(root, 'src');
-const order = ['util', 'data', 'save', 'audio', 'gl', 'world', 'models', 'chat', 'match', 'extras', 'anticheat', 'style', 'hud', 'hub', 'main'];
+const order = ['util', 'data', 'save', 'audio', 'gl', 'world', 'models', 'chat', 'match', 'extras', 'anticheat', 'style', 'more', 'hud', 'hub', 'main'];
 
 const js = order.map(n => `/* ---------- ${n}.js ---------- */\n` + fs.readFileSync(path.join(src, 'js', n + '.js'), 'utf8')).join('\n')
   .replace(/<\/script/gi, '<\\/script');

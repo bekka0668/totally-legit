@@ -654,3 +654,19 @@ input[type="range"] { width: 100%; accent-color: var(--signal); }
 .fx-glitchfx { background: linear-gradient(90deg, #00e5ff 0 30%, transparent 30% 45%, #ff3df0 45% 70%, transparent 70%), #10172b; }
 .fx-smoke { background: radial-gradient(circle at 40% 45%, #9aa1ab 0 22%, transparent 23%), radial-gradient(circle at 62% 58%, #7d848e 0 26%, transparent 27%), #232a38; }
 @media (max-width: 700px) { .att-opts { grid-template-columns: 1fr; } }
+
+/* ---------- black market, daily jobs ---------- */
+.market { display: grid; gap: 8px; }
+.deal-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.deal-card { position: relative; display: grid; gap: 3px; padding: 10px 12px; text-align: left; border: 1px solid var(--bandit-line); border-left: 3px solid var(--mc); border-radius: 10px; background: var(--bandit-ink); cursor: pointer; }
+.deal-card:hover { border-color: var(--mc); }
+.deal-card.sold { opacity: .55; }
+.dc-mod { font-family: var(--f-mono); font-size: 10.5px; color: var(--mc); letter-spacing: .1em; }
+.deal-card b { font-size: 15px; }
+.dc-price { font-family: var(--f-mono); font-size: 12px; color: var(--signal); }
+.dc-price s, .nd-price .was { color: var(--muted); }
+.deal-card em { position: absolute; top: 8px; right: 10px; font-style: normal; font-family: var(--f-display); font-weight: 800; color: #fff; background: var(--bandit); padding: 1px 7px; border-radius: 4px; transform: rotate(4deg); }
+.nd-price .deal { color: var(--bandit); font-family: var(--f-mono); font-size: 12px; }
+.contract.daily { border-color: rgba(255, 210, 63, .35); }
+.contract.daily.claimed { opacity: .6; }
+@media (max-width: 700px) { .deal-row { grid-template-columns: 1fr; } }

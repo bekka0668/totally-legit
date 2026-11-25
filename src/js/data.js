@@ -23,12 +23,18 @@ const WEAPONS = [
   { id: 'burst', name: 'Triple Threat', kind: 'Burst rifle', cost: 9000, dmg: 27, head: 3, rate: 0.36, mag: 30, reload: 2.0,
     spread: 0.014, auto: false, pellets: 1, recoil: 0.016, range: 200, snd: 'rifle', burst: 3, burstGap: 0.065, vm: [0.2, -0.24, -0.62],
     desc: 'Three rounds per click. For people who click a lot but hit a little.' },
+  { id: 'xbow', name: 'Pointy Stick', kind: 'Crossbow', cost: 7000, dmg: 140, head: 2.5, rate: 1.0, mag: 1, reload: 1.3,
+    spread: 0.006, auto: false, pellets: 1, recoil: 0.04, range: 150, snd: 'xbow', silent: true, vm: [0.2, -0.24, -0.58],
+    desc: 'One bolt, no bang. Quiet kills raise suspicion and BotGuard detection half as much.' },
   { id: 'sniper', name: 'LDR-50', kind: 'Sniper', cost: 15000, dmg: 115, head: 2.5, rate: 1.1, mag: 5, reload: 2.4,
     spread: 0.07, scopeSpread: 0, auto: false, pellets: 1, recoil: 0.11, range: 300, snd: 'sniper', scope: true, vm: [0.2, -0.24, -0.6],
     desc: 'Long distance relationship. Right-click to scope.' },
   { id: 'lmg', name: 'Lawnmower', kind: 'LMG', cost: 40000, dmg: 22, head: 2.5, rate: 0.068, mag: 100, reload: 4.2,
     spread: 0.05, auto: true, pellets: 1, recoil: 0.013, range: 180, snd: 'lmg', vm: [0.2, -0.25, -0.62],
     desc: 'A hundred rounds and no plan. Hold the button and mow the lawn.' },
+  { id: 'minigun', name: 'Hair Dryer', kind: 'Minigun', cost: 90000, dmg: 16, head: 2, rate: 0.04, mag: 200, reload: 5,
+    spread: 0.06, auto: true, pellets: 1, recoil: 0.006, range: 160, snd: 'smg', spinUp: 0.6, vm: [0.2, -0.27, -0.6],
+    desc: 'Spins up for half a second, then never stops. Hold the trigger and blow-dry the lobby.' },
   { id: 'launcher', name: 'Party Cannon', kind: 'Launcher', cost: 120000, dmg: 60, head: 1.5, rate: 0.9, mag: 4, reload: 2.6,
     spread: 0.008, auto: false, pellets: 1, recoil: 0.12, range: 220, snd: 'launcher', splash: { r: 5, dmg: 170 }, vm: [0.2, -0.24, -0.6],
     desc: 'Fires a gift-wrapped rocket. Five metres of surprise on impact.' },
@@ -38,7 +44,7 @@ const WEAPONS = [
 ];
 for (const w of WEAPONS) w.cost *= 2;
 // small credit multiplier per gun: pricier guns pay a little more per kill
-const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, burst: 1.2, sniper: 1.25, lmg: 1.3, launcher: 1.35, rail: 1.5 };
+const WEAPON_PAY = { pistol: 1, smg: 1.05, shotgun: 1.1, revolver: 1.15, rifle: 1.2, burst: 1.2, xbow: 1.3, sniper: 1.25, lmg: 1.3, minigun: 1.3, launcher: 1.35, rail: 1.5 };
 for (const w of WEAPONS) w.pay = WEAPON_PAY[w.id] || 1;
 const WEAPON_BY_ID = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
 
@@ -59,6 +65,7 @@ const MODULES = [
   { id: 'gs', name: 'GUNSMITH', kind: 'Weapon mods', color: '#e0a15c', glyph: 'wrench', blurb: 'Same guns. Very different bullets.' },
   { id: 'ch', name: 'CHRONO', kind: 'Time tricks', color: '#a78bfa', glyph: 'clock', blurb: 'The server clock is more of a guideline.' },
   { id: 'in', name: 'INSIDER', kind: 'Economy hacks', color: '#facc15', glyph: 'chart', blurb: 'Money that never touches a scoreboard.' },
+  { id: 'nd', name: 'BOOMBOX', kind: 'Grenades', color: '#ff6b3d', glyph: 'bomb', blurb: 'Press C. Things go boom. Upgrade the boom.' },
   { id: 'gh', name: 'GHOSTWARE', kind: 'Anti-anticheat', color: '#8fb3ff', glyph: 'ghost', blurb: 'BotGuard cannot ban what it cannot see.', stealth: true },
   { id: 'sp', name: 'SPOOFER', kind: 'Ban protection', color: '#e8e8f0', glyph: 'mask', blurb: 'For when BotGuard sees it anyway.', stealth: true },
 ];
@@ -188,6 +195,14 @@ const UPGRADES = [
   { id: 'sp4', mod: 'sp', x: 2, y: 2, cost: 45000, req: ['sp3'], name: 'Alt Account', desc: 'After a ban, detection resets to 0% instead of 40%.' },
   { id: 'sp5', mod: 'sp', x: 1, y: 3, cost: 90000, req: ['sp2', 'sp4'], name: 'Appeal Bot', desc: 'Once per match, a ban is appealed automatically and detection drops to 60%.' },
   { id: 'sp6', mod: 'sp', x: 1, y: 4, cost: 600000, req: ['sp5', 'gh7'], name: 'Server Owner', desc: 'You bought the servers. No bans, no kicks, no ban waves. Admins report to you now. Needs Ring -1 too.' },
+  // BOOMBOX (grenades on C)
+  { id: 'nd1', mod: 'nd', x: 1, y: 0, cost: 400, name: 'Extra Pins', desc: 'Start every match with 5 grenades instead of 3.', risk: 0.5, fx: { add: { grenades: 2 } } },
+  { id: 'nd2', mod: 'nd', x: 0, y: 1, cost: 1500, req: ['nd1'], name: 'Short Fuse', desc: 'Grenades go off 40% sooner.', risk: 0.5, fx: { mul: { fuse: 0.6 } } },
+  { id: 'nd3', mod: 'nd', x: 2, y: 1, cost: 2000, req: ['nd1'], name: 'Big Bang', desc: 'Blast radius +40%.', risk: 1, fx: { mul: { nadeR: 1.4 } } },
+  { id: 'nd4', mod: 'nd', x: 0, y: 2, cost: 6000, req: ['nd2'], name: 'Sticky Bombs', desc: 'Grenades stick to the first bot they touch.', risk: 1, fx: { set: { sticky: true } } },
+  { id: 'nd5', mod: 'nd', x: 2, y: 2, cost: 9000, req: ['nd3'], name: 'Cluster', desc: 'Every grenade splits into 4 more small blasts.', risk: 2, fx: { set: { cluster: true } } },
+  { id: 'nd6', mod: 'nd', x: 1, y: 3, cost: 20000, req: ['nd4', 'nd5'], name: 'Bandolier', desc: '+4 grenades, and every 5-kill streak hands you another.', risk: 1, fx: { add: { grenades: 4 }, set: { nadeRefill: true } } },
+  { id: 'nd7', mod: 'nd', x: 1, y: 4, cost: 80000, req: ['nd6'], name: 'Smart Grenades', desc: 'Grenades steer toward the nearest bot in flight.', risk: 3, fx: { set: { homing: true } } },
   // ---- second wave of upgrades: a side branch per module, plus a capstone ----
   { id: 'aim9', mod: 'aim', x: 3, y: 0, cost: 600, req: ['aim1'], name: "Recoil Assist", desc: "Lock-on pulls 30% harder.", risk: 1, fx: {"mul": {"aimStr": 1.3}} },
   { id: 'aim10', mod: 'aim', x: 3, y: 1, cost: 2500, req: ['aim9'], name: "Sticky Crosshair", desc: "Lock-on cone is 40% wider.", risk: 1, fx: {"mul": {"aimFov": 1.4}} },
@@ -790,6 +805,8 @@ const BOT_NAMES = [
   'Cache_Miss', 'Overflow_Olga', 'Kernel_Panic', 'Segfault_Sid', 'Loading_Lou', 'Ping_Pong', 'Mouse_Pad', 'WASD_Wendy',
   'Alt_Tab', 'Crouch_Spammer', 'NoScope_Noel', 'Spray_n_Pray', 'Lag_Comp', 'Hitreg_Hank', 'Tutorial_Tom', 'Captcha_Kid',
   'Dumbbell_Dave', 'Boot_Loop', 'Rubber_Duck', 'Last_Patch', 'Dev_Null', 'Robo_Ron', 'Clip_It', 'Free_Trial',
+  'Cable_Mgmt', 'Frame_Drop', 'Lag_Spike_Lucy', 'Toast_Master', 'Pixel_Pam', 'Server_Steve', 'Mod_Wannabe', 'Smurf_Account',
+  'Daily_Grinder', 'Nade_Spammer', 'Camper_Van', 'Rage_Bait', 'Gg_Ez_Greg', 'Report_Bot', 'Uninstall_Ursula', 'Hotkey_Hal',
 ];
 const PERSONAS = ['chill', 'salty', 'tryhard', 'troll', 'quiet', 'chill', 'salty'];
 
@@ -859,6 +876,9 @@ CHAT.jumpshot = ['mid air??', 'he jumped and hit that', 'bro is doing tricks', '
 CHAT.rivalCall = ['{n} is cheating too lol', 'two cheaters in one lobby??', 'report {n} as well', 'is everyone walling today', '{n} has walls, i saw it'];
 CHAT.rivalTaunt = ['nice walls. mine are better', 'get a better loader', 'bandit sold you the cheap version', 'imagine paying for that', 'my cheats > your cheats'];
 CHAT.rivalDown = ['ok your loader is better', 'how did you beat MY walls', 'refund. refund now', 'my cheat expired mid match'];
+CHAT.nade = ['GRENADE', 'nade!!', 'who threw that', 'run', 'it is stuck to me', 'where did that come from', 'why does it follow me'];
+CHAT.xbow = ['did he just shoot me with a stick', 'silent but deadly', 'i didnt even hear it', 'robin hood over here'];
+CHAT.minigun = ['WHAT IS THAT NOISE', 'he brought a minigun', 'bro is blow drying the map', 'that thing never reloads'];
 CHAT.panic = ['wait he stopped hitting everything', 'oh now he misses?', 'he turned it off when the admin came lol', 'suddenly legit'];
 
 const SERVER_LINES = [
@@ -898,6 +918,11 @@ const BANDIT_QUIPS = {
     'The moon has no admin either. I checked.',
     "Gun game's a great way to try stuff before you buy it. Then buy it.",
     'Raid Boss? Big bot, big wallet. Bring a big gun.',
+    'Check the black market. Prices like these fell off a truck.',
+    'Come back tomorrow. I give loyal customers a little something.',
+    'Grenades are just cheats you throw.',
+    'That crossbow? Quietest thing I sell. BotGuard barely hears it.',
+    'Daily jobs pay double. I am feeling generous. Do not get used to it.',
   ],
   broke: ["Come back with more credits. I don't do layaway.", 'Window shopping is free. Everything else costs.'],
   bought: ['Pleasure doing business.', "Injected. Don't ask how.", "Ooh, that one's my favorite.", 'Enjoy. Responsibly. Or not.', 'Another satisfied customer.'],
@@ -922,6 +947,8 @@ const MODES = [
   { id: 'clutch', name: 'Clutch Rounds', tag: 'Rounds', blurb: 'One life per round, no respawns. Wipe the squad to take the round. First to 5.', pay: 1.3, win: 6, botAcc: 0.8, roundBonus: 1.5, rounds: 5, roundTime: 45 , cost: 12000 },
   { id: 'gungame', name: 'Hand-Me-Downs', tag: 'Gun game', blurb: 'Every kill swaps your gun for the next one, owned or not. A kill with the last gun wins.', pay: 1.2, win: 8, ffa: true , cost: 25000 },
   { id: 'boss', name: 'Raid Boss', tag: 'Boss', blurb: 'A giant bot with a giant health bar and a few minions. Take it down before time runs out.', pay: 1, win: 14, botAcc: 0.9 , cost: 60000 },
+  { id: 'snipers', name: 'Long Distance', tag: 'Snipers', blurb: 'LDR-50 only, for everyone in your hands. Scope or no-scope, it is all you get.', pay: 1.6, win: 8, ffa: true, weapons: ['sniper'], cost: 100000 },
+  { id: 'pistols', name: 'Pistol Party', tag: 'Pistols', blurb: 'Peashooter and Hand Cannon only. Short range, short tempers.', pay: 1.5, win: 8, ffa: true, weapons: ['pistol', 'revolver'], cost: 150000 },
 ];
 const MODE_BY_ID = Object.fromEntries(MODES.map(m => [m.id, m]));
 const TEAM_ACCENTS = {
@@ -961,7 +988,7 @@ Object.assign(CHAT, {
 });
 
 // the gun order for Hand-Me-Downs: big and silly first, the humble pistol last
-const GUNGAME_ORDER = ['launcher', 'rail', 'lmg', 'rifle', 'burst', 'shotgun', 'smg', 'sniper', 'revolver', 'pistol'];
+const GUNGAME_ORDER = ['launcher', 'minigun', 'rail', 'lmg', 'rifle', 'burst', 'shotgun', 'smg', 'sniper', 'xbow', 'revolver', 'pistol'];
 
 /* ---------------- contracts: Bandit's odd jobs ---------------- */
 // stat: which tracked event counts. max: track the best single-match value instead of a running total.
@@ -998,6 +1025,14 @@ const RANK_XP = RANKS.map((_, i) => i === 0 ? 0 : Math.round(60 * Math.pow(1.62,
 const ACH = (id, name, desc, salt, test) => ({ id, name, desc, salt, test });
 const ACHIEVEMENTS = [
   ACH('owner', 'Untouchable', 'Buy Server Owner. BotGuard works for you now.', 100, () => !!Save.data.owned.sp6),
+  ACH('nade50', 'Pineapple Express', 'Get 50 grenade kills.', 25, s => (s.nadeKills || 0) >= 50),
+  ACH('streak7', 'Regular', 'Log in 7 days in a row.', 40, () => ((Save.data.daily || {}).streak || 0) >= 7),
+  ACH('market10', 'Bargain Hunter', 'Buy 10 black market deals.', 25, s => (s.marketBuys || 0) >= 10),
+  ACH('dailies', 'Clocked In', 'Finish 15 daily jobs.', 30, s => (s.dailiesDone || 0) >= 15),
+  ACH('snipers', 'Long Distance Relationship', 'Win a Long Distance match.', 20, s => (s.modeWins || {}).snipers >= 1),
+  ACH('pistols', 'Sidearm Supremacy', 'Win a Pistol Party match.', 20, s => (s.modeWins || {}).pistols >= 1),
+  ACH('hoarder', 'Hoarder', 'Own 150 cheats.', 60, () => Object.keys(Save.data.owned).filter(k => Save.data.owned[k]).length >= 150),
+  ACH('silent', 'Silent Night', 'Get 50 kills with the Pointy Stick.', 25, s => (s.xbowKills || 0) >= 50),
   ACH('rival10', 'Takes One To Know One', 'Kill 10 rival cheaters.', 30, s => (s.rivals || 0) >= 10),
   ACH('wave', 'Survived The Wave', 'Get hit by a BotGuard ban wave.', 15, s => (s.waves || 0) >= 1),
   ACH('pass25', 'Halfway There', 'Reach tier 25 of the Bandit Pass.', 30, s => Math.floor((s.passXp || 0) / PASS_XP) >= 25),

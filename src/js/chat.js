@@ -133,6 +133,7 @@ const Chat = {
     if (ctx.silent || ctx.magic) add += 3;
     if (ctx.long) add += 2;
     add += Math.min(4, Match.p.streak * 0.25);
+    if (ctx.quiet) add *= 0.5;
     this.addSus(add);
     this.tier = this.tierOf(this.sus);
     const t = this.tier;

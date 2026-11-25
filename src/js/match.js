@@ -73,6 +73,8 @@ const Match = {
     Extras.onMatchStart();
     AC.onMatchStart();
     Style.onMatchStart();
+    More.onMatchStart();
+    if (mode.weapons) { p.weapon = mode.weapons[0]; for (const id of mode.weapons) p.ammo[id] = this.magSize(WEAPON_BY_ID[id]); }
     Save.data.lastMap = mapId;
     Game.mode = 'match';
     Hub.hide();
@@ -237,6 +239,7 @@ const Match = {
     for (const w of WEAPONS) if (Save.data.weapons[w.id]) p.ammo[w.id] = this.magSize(w);
     p.reloadT = 0; p.switchT = 0.3;
     if (this.mode.id === 'gungame') p.ammo[p.weapon] = this.magSize(this.weapon());
+    if (this.mode.weapons) for (const id of this.mode.weapons) p.ammo[id] = this.magSize(WEAPON_BY_ID[id]);
     this.deathCam = null;
     HUD.setDead(null);
   },
@@ -279,6 +282,7 @@ const Match = {
     if (live) Extras.update(dt);
     if (this.phase === 'play') AC.update(dt);
     if (live) Style.update(dt);
+    if (live) More.update(dt);
     this.updateFx(dt);
     Chat.update(dt);
   },
@@ -597,6 +601,10 @@ const Match = {
     const auto = w.auto || S.fullAuto;
     const held = (Input.fireHeld || Input.touchFire) && !typing && !this.afk;
     let want = trig || (held && (auto || p.clickBuf > 0));
+    if (w.spinUp) {
+      p.spin = U.clamp((p.spin || 0) + (want ? dt / w.spinUp : -dt / w.spinUp * 1.5), 0, 1);
+      if (p.spin < 1) want = false;
+    }
     if (!held && p.clickBuf > 0 && !this.afk && !typing) want = true;
     // tactical reload: top up whenever nothing is in sight
     if (S.tacReload && !want && !trig && p.reloadT <= 0 && p.ammo[w.id] < this.magSize(w) && !this.aimTarget && p.fireT < -0.25) this.startReload();
@@ -615,14 +623,16 @@ const Match = {
   },
   switchWeapon(id) {
     const p = this.p;
-    if (!Save.data.weapons[id] || p.weapon === id || this.mode.id === 'gungame') return;
+    const mw = this.mode.weapons;
+    if (mw ? !mw.includes(id) : !Save.data.weapons[id]) return;
+    if (p.weapon === id || this.mode.id === 'gungame') return;
     p.burstLeft = 0;
     p.weapon = id; p.switchT = 0.35 * (Shop.S.swapMul || 1); p.lastSwitchT = this.clock; p.reloadT = 0; p.scoped = false; p.fireT = Math.max(p.fireT, 0);
     if (p.ammo[id] == null) p.ammo[id] = this.magSize(WEAPON_BY_ID[id]);
     SFX.ui();
   },
   cycleWeapon(dir) {
-    const owned = WEAPONS.filter(w => Save.data.weapons[w.id]);
+    const owned = this.mode.weapons ? this.mode.weapons.map(id => WEAPON_BY_ID[id]) : WEAPONS.filter(w => Save.data.weapons[w.id]);
     if (owned.length < 2 || this.mode.id === 'gungame') return;
     const i = owned.findIndex(w => w.id === this.p.weapon);
     this.switchWeapon(owned[(i + dir + owned.length) % owned.length].id);
@@ -796,7 +806,8 @@ const Match = {
         wall: !!info.wall, snap: false, spin: false, multi: p.multi, frozen: this.freezeT > 0,
         blink: this.clock - p.lastBlinkT < 1.5, speed: Math.hypot(p.vel[0], p.vel[2]) > 8.5, long: V.dist(p.pos, b.pos) > 45,
         ambush: S.ambush && this.clock - b.sawPlayerT > 2.5,
-        suppressed: !info.strike && !info.splash && !info.popper && !info.reflect && !info.chain && !!Shop.attOf(this.weapon().id).suppressor,
+        suppressed: !info.strike && !info.splash && !info.popper && !info.reflect && !info.chain && (!!Shop.attOf(this.weapon().id).suppressor || !!this.weapon().silent),
+        quiet: !info.strike && !info.splash && !info.popper && !info.reflect && !info.chain && !!this.weapon().silent,
       };
       if (!info.popper && !info.reflect) {
         ctx.snap = this.recentTurn(0.15) > 35 * DEG;
@@ -809,7 +820,7 @@ const Match = {
       if (S.streak) bonus += Math.min(2, (p.streak - 1) * 0.1);
       if (ctx.ambush) bonus += 0.6 + S.ambushBonus;
       // the gun that got the kill pays its small multiplier; strikes, lasers, chains and confetti don't
-      const killGun = info.splash ? WEAPON_BY_ID.launcher : (info.strike || info.chain || info.popper || info.reflect || info.nuke) ? null : this.weapon();
+      const killGun = info.nade ? null : info.splash ? WEAPON_BY_ID.launcher : (info.strike || info.chain || info.popper || info.reflect || info.nuke) ? null : this.weapon();
       const xg = killGun ? killGun.pay : 1;
       const xm = Extras.killMult(b, info), xs = Style.killMult(p.streak);
       const raw = base * (1 + bonus) * S.cr;
@@ -823,13 +834,16 @@ const Match = {
       this.addFloater([b.pos[0], b.pos[1] + 2.2, b.pos[2]], '+' + U.fmt(value) + ' CR', '#ffd23f', 1.1, true);
       this.fx.hitKill = true; this.fx.hitmark = 0.3;
       SFX.kill();
-      const wname = info.nuke ? 'ctrl+alt+del' : info.strike ? 'from above' : info.splash ? 'party cannon' : info.popper ? 'confetti' : info.reflect ? 'reflect' : this.weapon().name;
+      const wname = info.nade ? 'grenade' : info.nuke ? 'ctrl+alt+del' : info.strike ? 'from above' : info.splash ? 'party cannon' : info.popper ? 'confetti' : info.reflect ? 'reflect' : this.weapon().name;
       HUD.killfeed(Save.data.settings.name, b.name, wname, { head: info.head, wall: ctx.wall, mine: true, kTeam: 'blue', vTeam: b.team });
       const calls = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'OVERKILL'];
       if (p.multi >= 2) { HUD.callout(p.multi >= 6 ? 'TOTALLY LEGIT KILL' : calls[p.multi], 'multi'); SFX.streak(p.multi); }
       else if (info.head) HUD.callout('HEADSHOT', 'small');
       Chat.onPlayerKill(b, ctx);
       AC.onKill(ctx);
+      More.onKill(info);
+      if (info.nade) Save.data.stats.nadeKills = (Save.data.stats.nadeKills || 0) + 1;
+      if (ctx.quiet && this.weapon().id === 'xbow') Save.data.stats.xbowKills = (Save.data.stats.xbowKills || 0) + 1;
       Style.onKill(b, info, ctx);
       Extras.onPlayerKill(b, info, ctx);
       if (S.popper && !info.popper) this.pops.push({ pos: [b.pos[0], b.pos[1] + 1, b.pos[2]], t: 0.12 });
@@ -1318,6 +1332,7 @@ const Match = {
       Models.shadow(B.trans, b.pos[0], b.pos[1], b.pos[2], 0.85);
     }
     Extras.drawChips(B.dyn);
+    More.draw(B.dyn);
     const m = Models.m4;
     for (const q of this.parts) {
       if (!q.alive) continue;

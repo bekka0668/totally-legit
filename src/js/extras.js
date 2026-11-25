@@ -196,7 +196,7 @@ const Extras = {
   },
 
   /* ---------------- splash damage (Party Cannon) ---------------- */
-  splash(pt, sp, direct, small) {
+  splash(pt, sp, direct, small, src) {
     const M = Match;
     if (small) {
       M.blasts.push({ p: pt.slice(), life: 0.18, max: 0.18 });
@@ -211,7 +211,7 @@ const Extras = {
       if (!b.alive || b.gone || b.team === 'blue' || b === direct) continue;
       const d = V.dist(pt, M.chestPoint(b));
       if (d > sp.r * (b.scale || 1)) continue;
-      M.damageBot(b, sp.dmg * (1 - 0.5 * d / sp.r), false, { splash: true, dir: V.norm([0, 0, 0], V.sub([0, 0, 0], b.pos, pt)), hitPos: M.chestPoint(b) });
+      M.damageBot(b, sp.dmg * (1 - 0.5 * d / sp.r), false, { splash: true, nade: src === 'nade', dir: V.norm([0, 0, 0], V.sub([0, 0, 0], b.pos, pt)), hitPos: M.chestPoint(b) });
     }
   },
 
@@ -472,7 +472,7 @@ const Extras = {
   track(stat, n, arg) {
     const D = Save.data;
     if (!Array.isArray(D.contracts)) return;
-    for (const c of D.contracts) {
+    for (const c of D.contracts.concat((D.daily && D.daily.list) || [])) {
       if (c.done) continue;
       const t = CONTRACT_BY_ID[c.id];
       if (!t || t.stat !== stat || (c.arg && c.arg !== arg)) continue;

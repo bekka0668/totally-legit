@@ -79,7 +79,12 @@ const Shop = {
     return { owned: list.filter(u => this.owned(u.id)).length, total: list.length };
   },
   affordableCount() {
-    return UPGRADES.filter(u => this.state(u.id) === 'available' && Save.data.credits >= u.cost).length;
+    return UPGRADES.filter(u => this.state(u.id) === 'available' && Save.data.credits >= this.priceOf(u.id)).length;
+  },
+  // black market deals knock a cheat's price down for the day
+  priceOf(id) {
+    const u = UPGRADE_BY_ID[id], d = typeof More !== 'undefined' ? More.dealOf(id) : null;
+    return d ? Math.round(u.cost * (1 - d.off)) : u.cost;
   },
   spend(n) {
     if (Save.data.credits < n) return false;
@@ -87,8 +92,10 @@ const Shop = {
   },
   buy(id) {
     const u = UPGRADE_BY_ID[id];
-    if (!u || this.state(id) !== 'available' || !this.spend(u.cost)) return false;
+    const deal = typeof More !== 'undefined' && More.dealOf(id);
+    if (!u || this.state(id) !== 'available' || !this.spend(this.priceOf(id))) return false;
     Save.data.owned[id] = true;
+    if (deal) Save.data.stats.marketBuys = (Save.data.stats.marketBuys || 0) + 1;
     this.compute(); Save.save();
     return true;
   },
@@ -209,6 +216,7 @@ const Shop = {
       bountyAdd: 0, clipMul: 1, vampAdd: 0, exMul: 1, chainN: 2, slowAdd: 0, rewinds: 1, thiefCap: 60, slowCDMul: 1, chipMul: 1,
       interestCap: 1, interestRate: 0.02, contractMul: 1, partsAdd: 0, coolAdd: 0, reportMul: 1, activeMul: 1, waveMul: 1,
       kickPenalty: 0.5, fineMul: 1, adminTime: 1, payroll: false,
+      grenades: 0, fuse: 1, nadeR: 1, sticky: false, cluster: false, nadeRefill: false, homing: false,
     });
     for (const u of UPGRADES) {
       if (!u.fx || !a(u.id)) continue;

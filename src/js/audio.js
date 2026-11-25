@@ -91,6 +91,8 @@ const SFX = {
       case 'lmg':
         this.nz(t, 0.12, { f: lp(2800), g: 0.5 * v, pan }); this.tn(t, 0.08, { f: 120, f2: 45, g: 0.55 * v, pan });
         this.nz(t, 0.02, { type: 'highpass', f: 3000, g: 0.18 * crack, pan }); break;
+      case 'xbow':
+        this.nz(t, 0.08, { type: 'bandpass', f: 1800, q: 3, g: 0.25 * v, pan }); this.tn(t, 0.06, { f: 420, f2: 140, g: 0.2 * v, pan }); break;
       case 'launcher':
         this.nz(t, 0.35, { type: 'bandpass', f: 900, f2: 300, q: 1.2, g: 0.6 * v, pan }); this.tn(t, 0.3, { f: 220, f2: 60, g: 0.5 * v, pan }); break;
       case 'bot':
