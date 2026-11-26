@@ -69,4 +69,4 @@ Cheats that add bots always add them to the enemy team. Wallhack and aimbot igno
 
 For testing there is a console hook, `TL_DEBUG` (for example `TL_DEBUG.give(5000)` adds credits). Fitting, for a game about cheating.
 
-Everything here is original: the name, Bandit, the BOTCAMP servers, the maps, the robots and all the art are made from code, and every sound is synthesized.
+Everything here is original: the name, Bandit, the BOTCAMP servers, the maps, the robots and all the art are made from code, and every sound is synthesized.       
