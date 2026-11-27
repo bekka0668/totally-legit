@@ -42,6 +42,16 @@ function drawCrosshair(c, x, y, xh, k) {
         for (const [ox, oy] of [[-1.05, -0.35], [-0.38, -0.95], [0.38, -0.95], [1.05, -0.35]]) { c.beginPath(); c.arc(x + ox * s, y + oy * s, s * 0.3, 0, TAU); c.fill(); }
         return;
       }
+      case 'plus': {
+        const t = th * 1.6;
+        c.fillRect(x - gap - size, y - t / 2, size, t); c.fillRect(x + gap, y - t / 2, size, t);
+        c.fillRect(x - t / 2, y - gap - size, t, size); c.fillRect(x - t / 2, y + gap, t, size); return;
+      }
+      case 'bullseye': {
+        const r = gap + size * 0.7;
+        c.arc(x, y, r, 0, TAU); c.moveTo(x + r * 0.5, y); c.arc(x, y, r * 0.5, 0, TAU); c.stroke();
+        c.beginPath(); c.arc(x, y, th * 0.8, 0, TAU); c.fill(); return;
+      }
       case 'star': {
         const r = gap + size * 0.75, ri = r * 0.45;
         for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? ri : r; i ? c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }

@@ -1341,6 +1341,8 @@ const XHAIRS = [
   { id: 'diamond', name: 'Diamond', cost: 60 },
   { id: 'brackets', name: 'Brackets', cost: 80 },
   { id: 'triangle', name: 'Triforce-ish', cost: 120 },
+  { id: 'plus', name: 'Thicc Plus', cost: 50 },
+  { id: 'bullseye', name: 'Bullseye', cost: 160 },
   { id: 'star', name: 'Gold Star', cost: 0, pass: true },
   { id: 'ringx', name: 'Target Locked', cost: 0, pass: true },
   { id: 'hex', name: 'Hex Key', cost: 0, pass: true },
@@ -6517,6 +6519,16 @@ function drawCrosshair(c, x, y, xh, k) {
         c.ellipse(x, y + s * 0.45, s * 0.75, s * 0.58, 0, 0, TAU); c.fill();
         for (const [ox, oy] of [[-1.05, -0.35], [-0.38, -0.95], [0.38, -0.95], [1.05, -0.35]]) { c.beginPath(); c.arc(x + ox * s, y + oy * s, s * 0.3, 0, TAU); c.fill(); }
         return;
+      }
+      case 'plus': {
+        const t = th * 1.6;
+        c.fillRect(x - gap - size, y - t / 2, size, t); c.fillRect(x + gap, y - t / 2, size, t);
+        c.fillRect(x - t / 2, y - gap - size, t, size); c.fillRect(x - t / 2, y + gap, t, size); return;
+      }
+      case 'bullseye': {
+        const r = gap + size * 0.7;
+        c.arc(x, y, r, 0, TAU); c.moveTo(x + r * 0.5, y); c.arc(x, y, r * 0.5, 0, TAU); c.stroke();
+        c.beginPath(); c.arc(x, y, th * 0.8, 0, TAU); c.fill(); return;
       }
       case 'star': {
         const r = gap + size * 0.75, ri = r * 0.45;

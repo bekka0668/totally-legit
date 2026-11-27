@@ -361,6 +361,8 @@ const XHAIRS = [
   { id: 'diamond', name: 'Diamond', cost: 60 },
   { id: 'brackets', name: 'Brackets', cost: 80 },
   { id: 'triangle', name: 'Triforce-ish', cost: 120 },
+  { id: 'plus', name: 'Thicc Plus', cost: 50 },
+  { id: 'bullseye', name: 'Bullseye', cost: 160 },
   { id: 'star', name: 'Gold Star', cost: 0, pass: true },
   { id: 'ringx', name: 'Target Locked', cost: 0, pass: true },
   { id: 'hex', name: 'Hex Key', cost: 0, pass: true },
