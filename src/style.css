@@ -672,3 +672,5 @@ input[type="range"] { width: 100%; accent-color: var(--signal); }
 @media (max-width: 700px) { .deal-row { grid-template-columns: 1fr; } }
 
 .fx-balloons { background: radial-gradient(circle at 35% 35%, #ff5d8f 0 16%, transparent 17%), radial-gradient(circle at 62% 45%, #ffd23f 0 16%, transparent 17%), radial-gradient(circle at 48% 62%, #43d9ff 0 16%, transparent 17%), #20284a; }
+
+.h-ammo b.low { color: var(--danger); }

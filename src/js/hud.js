@@ -590,6 +590,8 @@ const HUD = {
     if (L.hpw !== hp) { L.hpw = hp; e['hp-fill'].style.width = hp + '%'; e.hud.classList.toggle('low', hp < 35 && p.alive); }
     const w = M.weapon();
     set('ammo', e.ammo, S.infAmmo ? '∞' : String(p.ammo[w.id] ?? 0));
+    const lowAmmo = !S.infAmmo && (p.ammo[w.id] ?? 0) <= Math.max(1, Math.floor(M.magSize(w) * 0.25));
+    if (L.lowAmmo !== lowAmmo) { L.lowAmmo = lowAmmo; e.ammo.classList.toggle('low', lowAmmo); }
     set('mag', e.mag, S.infAmmo ? 'bottomless' : '/ ' + M.magSize(w));
     set('wname', e.wname, w.name);
     if (L.reloading !== (p.reloadT > 0)) { L.reloading = p.reloadT > 0; e.reload.hidden = !L.reloading; }
