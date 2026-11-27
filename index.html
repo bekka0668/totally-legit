@@ -2020,6 +2020,9 @@ const RANK_XP = RANKS.map((_, i) => i === 0 ? 0 : Math.round(60 * Math.pow(1.62,
 const ACH = (id, name, desc, salt, test) => ({ id, name, desc, salt, test });
 const ACHIEVEMENTS = [
   ACH('owner', 'Untouchable', 'Buy Server Owner. BotGuard works for you now.', 100, () => !!Save.data.owned.sp6),
+  ACH('favgun', 'Loyal', 'Get 500 kills with a single gun.', 30, s => Object.values(s.gunKills || {}).some(n => n >= 500)),
+  ACH('allguns', 'Jack Of All Trades', 'Get a kill with every gun.', 40, s => WEAPONS.every(w => (s.gunKills || {})[w.id] > 0)),
+  ACH('matches100', 'Regular Customer', 'Play 100 matches.', 30, s => s.matches >= 100),
   ACH('nade50', 'Pineapple Express', 'Get 50 grenade kills.', 25, s => (s.nadeKills || 0) >= 50),
   ACH('streak7', 'Regular', 'Log in 7 days in a row.', 40, () => ((Save.data.daily || {}).streak || 0) >= 7),
   ACH('market10', 'Bargain Hunter', 'Buy 10 black market deals.', 25, s => (s.marketBuys || 0) >= 10),
