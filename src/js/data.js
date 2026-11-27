@@ -377,6 +377,7 @@ const KILLFX = [
   { id: 'fireworks', name: 'Fireworks', cost: 420, desc: 'Sparks fly straight up. Very subtle.' },
   { id: 'saltfx', name: 'Salt Shaker', cost: 300, desc: 'Bots crumble into a pile of salt. Fitting.' },
   { id: 'banned', name: 'BANNED', cost: 650, desc: 'A big red BANNED stamp over every kill. The irony is free.' },
+  { id: 'balloons', name: 'Balloon Pop', cost: 180, desc: 'Bots float away as a bunch of balloons.' },
   { id: 'glitchfx', name: 'Desync', cost: 0, pass: true, desc: 'Bots smear sideways into cyan and magenta cubes. Bandit Pass only.' },
   { id: 'smoke', name: 'Logged Off', cost: 0, pass: true, desc: 'Bots puff into a slow grey cloud. Bandit Pass only.' },
 ];

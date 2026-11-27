@@ -1225,6 +1225,8 @@ const Match = {
       for (let i = 0; i < 30; i++) this.addPart(x, y + 1.2, z, U.rand(-3, 3), U.rand(1, 5), U.rand(-3, 3), 0.1, [1, 0.2, 0.25], U.rand(0.8, 1.6), 6, 0.8, 0);
     } else if (kind === 'glitchfx') {
       for (let i = 0; i < 40; i++) this.addPart(x + U.rand(-0.3, 0.3), y + U.rand(0.1, 1.9), z + U.rand(-0.3, 0.3), U.rand(-5, 5), U.rand(-0.3, 0.3), U.rand(-5, 5) * 0.2, 0.11, i % 2 ? [0.2, 1, 1] : [1, 0.2, 0.9], U.rand(0.4, 0.9), 0, 1, 0);
+    } else if (kind === 'balloons') {
+      for (let i = 0; i < 9; i++) this.addPart(x + U.rand(-0.5, 0.5), y + U.rand(1, 2), z + U.rand(-0.5, 0.5), U.rand(-0.4, 0.4), U.rand(1.5, 3), U.rand(-0.4, 0.4), 0.28, U.hsv(Math.random(), 0.7, 1), U.rand(2.5, 3.5), -0.4, 0.3, 0);
     } else if (kind === 'smoke') {
       for (let i = 0; i < 26; i++) this.addPart(x + U.rand(-0.4, 0.4), y + U.rand(0.3, 1.8), z + U.rand(-0.4, 0.4), U.rand(-0.5, 0.5), U.rand(0.3, 1.2), U.rand(-0.5, 0.5), U.rand(0.25, 0.45), [0.55, 0.57, 0.6], U.rand(1.4, 2.4), -0.6, 0, 0);
     } else if (kind === 'fireworks') {
