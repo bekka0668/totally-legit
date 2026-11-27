@@ -445,6 +445,7 @@ const Hub = {
       ['Reports against you', U.fmt(s.reports)], ['Rage quits caused', U.fmt(s.ragequits)], ['Peak suspicion', s.peakSus + '%'], ['Time played', fmtDur(s.playTime)],
       ['Solo vs Squad wins', U.fmt((s.modeWins || {}).squad || 0)], ['Clutch series won', U.fmt((s.modeWins || {}).clutch || 0)],
       ['Rounds won', U.fmt(s.roundsWon || 0)], ['Team wins · teammate kills', U.fmt((s.modeWins || {}).tdm || 0) + ' · ' + U.fmt(s.allyKills || 0)],
+      ['Favorite gun', (() => { const gk = s.gunKills || {}, id = Object.keys(gk).sort((a, b) => gk[b] - gk[a])[0]; return id ? WEAPON_BY_ID[id].name + ' · ' + U.fmt(gk[id]) : 'none yet'; })()],
       ['Jump-shot kills', U.fmt(s.jumpKills || 0)], ['No-scope kills', U.fmt(s.noScopes || 0)], ['Best style score', U.fmt(s.bestStyle || 0)], ['Top style rank', STYLE_RANKS[s.topStyleRank || 0].name],
       ['Rival cheaters killed', U.fmt(s.rivals || 0)], ['Ban waves', U.fmt(s.waves || 0)], ['Loader parts', U.fmt(Save.data.parts || 0)], ['Pass tier', Extras.passInfo().tier + ' / ' + PASS_TIERS],
       ['Bans', U.fmt(s.bans || 0)], ['Kicked by admins', U.fmt(s.adminKicks || 0)], ['Admins fooled', U.fmt(s.adminsSurvived || 0)], ['Admins bribed', U.fmt(s.bribes || 0)],

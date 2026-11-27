@@ -843,6 +843,7 @@ const Match = {
       AC.onKill(ctx);
       More.onKill(info);
       if (info.nade) Save.data.stats.nadeKills = (Save.data.stats.nadeKills || 0) + 1;
+      if (killGun) { const gk = Save.data.stats.gunKills || (Save.data.stats.gunKills = {}); gk[killGun.id] = (gk[killGun.id] || 0) + 1; }
       if (ctx.quiet && this.weapon().id === 'xbow') Save.data.stats.xbowKills = (Save.data.stats.xbowKills || 0) + 1;
       Style.onKill(b, info, ctx);
       Extras.onPlayerKill(b, info, ctx);
