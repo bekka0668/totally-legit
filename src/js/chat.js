@@ -119,6 +119,8 @@ const Chat = {
   },
 
   onPlayerKill(victim, ctx) {
+    const st = Match.p.streak;
+    if (st === 10 || st === 25 || st === 50 || st === 100) this.server(`${Save.data.settings.name} is on a ${st}-kill streak.`);
     let add = 1.2;
     if (ctx.head) add += 1.4;
     if (ctx.wall) add += 7;
