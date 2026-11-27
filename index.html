@@ -6645,6 +6645,7 @@ const HUD = {
           <div class="ov-eyebrow">PAUSED</div>
           <h2 class="ov-title">${U.esc(d.name)}</h2>
           <p class="ov-sub">${U.fmt(Match.earn.total)} CR earned so far. Leaving keeps everything you earned.</p>
+          <p class="ov-sub">${U.esc(Match.mode.name)} · ${Match.p.kills} kills · streak ${Match.p.streak} · BotGuard ${Math.round(AC.det)}% ${AC.tier().name}</p>
           <div class="ov-row">
             <button class="btn primary" id="ov-resume">Resume</button>
             <button class="btn" id="ov-settings">Settings</button>
